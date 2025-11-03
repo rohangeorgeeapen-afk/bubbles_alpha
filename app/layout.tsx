@@ -1,9 +1,6 @@
 import './globals.css';
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
 import { AuthProvider } from '@/lib/contexts/auth-context';
-
-const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'Bubbles - Non-Linear AI Chat',
@@ -17,7 +14,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <head>
+        <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap" rel="stylesheet" />
+      </head>
+      <body>
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

@@ -26,14 +26,18 @@ export default function CanvasManager() {
   const [hasInitialized, setHasInitialized] = useState(false);
   const { user, signOut, loading: authLoading } = useAuth();
 
-  const loadCanvases = useCallback(async () => {
+  const loadCanvases = useCallback(async (isInitialLoad = false) => {
     if (!user) {
       setLoading(false);
       setHasInitialized(true);
       return;
     }
 
-    setLoading(true);
+    // Only show loading spinner on initial load, not on background refreshes
+    if (isInitialLoad) {
+      setLoading(true);
+    }
+    
     try {
       const { data, error } = await supabase
         .from('canvases')
@@ -58,9 +62,27 @@ export default function CanvasManager() {
           nodes: canvas.nodes || [],
           edges: canvas.edges || [],
         }));
-        setCanvases(formattedCanvases);
-        // Set the first canvas as current
-        setCurrentCanvasId(formattedCanvases[0].id);
+        
+        // Only update canvases if data has actually changed
+        setCanvases(prevCanvases => {
+          // If we have the same number of canvases with the same IDs, don't update
+          if (prevCanvases.length === formattedCanvases.length &&
+              prevCanvases.every((prev, idx) => prev.id === formattedCanvases[idx].id)) {
+            // Keep existing canvas objects to prevent unnecessary re-renders
+            return prevCanvases;
+          }
+          return formattedCanvases;
+        });
+        
+        // Only set current canvas if none is selected, or if the current one no longer exists
+        setCurrentCanvasId(prevId => {
+          // If we already have a canvas selected and it still exists, keep it
+          if (prevId && formattedCanvases.some(c => c.id === prevId)) {
+            return prevId;
+          }
+          // Otherwise, select the first canvas
+          return formattedCanvases[0].id;
+        });
       } else {
         // No canvases yet
         setCanvases([]);
@@ -71,7 +93,9 @@ export default function CanvasManager() {
       setCanvases([]);
       setCurrentCanvasId(null);
     } finally {
-      setLoading(false);
+      if (isInitialLoad) {
+        setLoading(false);
+      }
       setHasInitialized(true);
     }
   }, [user]);
@@ -85,14 +109,15 @@ export default function CanvasManager() {
 
     if (!user) {
       setLoading(false);
-      setAuthModalOpen(true);
       return;
     }
 
-    // User is logged in, close the auth modal and load canvases
-    setAuthModalOpen(false);
-    loadCanvases();
-  }, [user, authLoading, loadCanvases]);
+    // Only load canvases once on initial mount
+    if (!hasInitialized) {
+      setAuthModalOpen(false);
+      loadCanvases(true); // Pass true for initial load
+    }
+  }, [user, authLoading, loadCanvases, hasInitialized]);
 
 
 
@@ -327,19 +352,26 @@ export default function CanvasManager() {
     }
   }, [signOut]);
 
-  const currentCanvas = canvases.find((c) => c.id === currentCanvasId);
+  // Memoize current canvas to prevent unnecessary re-renders
+  const currentCanvas = React.useMemo(
+    () => canvases.find((c) => c.id === currentCanvasId),
+    [canvases, currentCanvasId]
+  );
 
-  const canvasSummaries = canvases.map((canvas) => ({
-    id: canvas.id,
-    name: canvas.name,
-    createdAt: canvas.createdAt,
-    nodeCount: canvas.nodes.length,
-  }));
+  const canvasSummaries = React.useMemo(
+    () => canvases.map((canvas) => ({
+      id: canvas.id,
+      name: canvas.name,
+      createdAt: canvas.createdAt,
+      nodeCount: canvas.nodes.length,
+    })),
+    [canvases]
+  );
 
   if (authLoading || loading) {
     return (
       <div className="flex h-screen bg-[#212121] items-center justify-center">
-        <div className="text-[#ececec]">Loading...</div>
+        <div className="w-12 h-12 border-4 border-[#3a3a3a] border-t-[#ececec] rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -349,14 +381,27 @@ export default function CanvasManager() {
       <>
         <div className="flex h-screen bg-[#212121] items-center justify-center">
           <div className="text-center">
-            <h1 className="text-3xl font-semibold text-[#ececec] mb-4">Welcome to Bubbles</h1>
-            <p className="text-[#8e8e8e] mb-6">Sign in to start your conversation journey</p>
-            <Button
+            <h1 
+              className="text-6xl mb-3 font-bold tracking-tight" 
+              style={{ 
+                fontFamily: 'Montserrat, sans-serif', 
+                fontWeight: 700, 
+                backgroundImage: 'linear-gradient(90deg, #7dd3fc, #60a5fa)',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                color: 'transparent',
+                WebkitTextFillColor: 'transparent'
+              }}
+            >
+              bubbles
+            </h1>
+            <p className="text-[#b4b4b4] text-lg mb-8">Think in branches, not lines</p>
+            <button
               onClick={() => setAuthModalOpen(true)}
-              className="bg-[#ececec] hover:bg-[#d4d4d4] text-[#0d0d0d] rounded-lg font-medium"
+              className="px-6 py-2.5 bg-[#2a2a2a] text-[#ececec] text-sm rounded-lg font-medium border border-[#3a3a3a] transition-all duration-200 hover:border-blue-500/30 hover:shadow-lg hover:shadow-blue-500/20"
             >
               Get Started
-            </Button>
+            </button>
           </div>
         </div>
         <AuthModal 
@@ -384,10 +429,11 @@ export default function CanvasManager() {
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-0'}`}>
         {hasInitialized && (
           <ConversationCanvas
-            key={currentCanvas?.id || 'empty-canvas'}
+            key={currentCanvasId || 'empty-canvas'}
             initialNodes={currentCanvas?.nodes || []}
             initialEdges={currentCanvas?.edges || []}
             onUpdate={handleCanvasUpdate}
+            sidebarOpen={sidebarOpen}
           />
         )}
       </div>

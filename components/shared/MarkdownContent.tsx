@@ -15,13 +15,13 @@ export default function MarkdownContent({ content, className = '' }: MarkdownCon
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          p: ({ children }) => <p className="mb-3 last:mb-0 leading-relaxed">{children}</p>,
-          h1: ({ children }) => <h1 className="text-lg font-semibold mb-3 mt-2 text-[#ececec]">{children}</h1>,
-          h2: ({ children }) => <h2 className="text-base font-semibold mb-2 mt-2 text-[#ececec]">{children}</h2>,
-          h3: ({ children }) => <h3 className="text-sm font-semibold mb-2 mt-2 text-[#ececec]">{children}</h3>,
-          ul: ({ children }) => <ul className="list-disc ml-5 mb-3 space-y-1">{children}</ul>,
-          ol: ({ children }) => <ol className="list-decimal ml-5 mb-3 space-y-1">{children}</ol>,
-          li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+          p: ({ children }) => <p className="mb-4 last:mb-0 leading-[1.7]">{children}</p>,
+          h1: ({ children }) => <h1 className="text-[19px] font-semibold mb-4 mt-5 text-[#ececec] leading-[1.4]">{children}</h1>,
+          h2: ({ children }) => <h2 className="text-[17px] font-semibold mb-3 mt-4 text-[#ececec] leading-[1.4]">{children}</h2>,
+          h3: ({ children }) => <h3 className="text-[16px] font-semibold mb-3 mt-3 text-[#ececec] leading-[1.4]">{children}</h3>,
+          ul: ({ children }) => <ul className="list-disc ml-5 mb-4 space-y-2">{children}</ul>,
+          ol: ({ children }) => <ol className="list-decimal ml-5 mb-4 space-y-2">{children}</ol>,
+          li: ({ children }) => <li className="leading-[1.7]">{children}</li>,
           code: ({ inline, children, ...props }: any) =>
             inline ? (
               <code className="bg-[#0d0d0d] px-1.5 py-0.5 rounded text-[13px] font-mono text-[#ececec]" {...props}>

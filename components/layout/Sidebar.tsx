@@ -55,21 +55,29 @@ export default function Sidebar({
               <PanelLeftClose className="w-5 h-5" />
             </Button>
           </div>
-          <Button
+          <button
             onClick={onNewCanvas}
-            className="w-full bg-transparent hover:bg-[#212121] text-[#ececec] rounded-lg font-normal text-sm border border-[#4d4d4d] h-11 whitespace-nowrap overflow-hidden"
-            size="sm"
+            className="w-full bg-[#2a2a2a] text-[#ececec] rounded-lg font-normal text-sm border border-[#4a4a4a] h-11 whitespace-nowrap overflow-hidden shadow-md transition-all duration-200 flex items-center justify-center hover:border-blue-400/50 hover:shadow-lg hover:shadow-blue-500/30 hover:-translate-y-0.5 relative"
+            style={{
+              background: 'rgba(42, 42, 42, 0.8)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(96, 165, 250, 0.2))';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(42, 42, 42, 0.8)';
+            }}
           >
-            <Plus className="w-4 h-4 mr-2 flex-shrink-0" strokeWidth={2} />
+            <Plus className="w-4 h-4 absolute left-4 text-blue-400" strokeWidth={2} />
             <span className="truncate">New canvas</span>
-          </Button>
+          </button>
         </div>
 
         {/* Canvas List */}
         <ScrollArea className="flex-1 px-2">
           <div className="space-y-0">
             {canvases.length === 0 ? (
-              <div className="text-center py-8 text-[#8e8e8e] text-sm px-4">
+              <div className="text-center py-8 text-[#b4b4b4] text-sm px-4">
                 No canvases yet
               </div>
             ) : (
@@ -78,7 +86,7 @@ export default function Sidebar({
                   key={canvas.id}
                   className={`group relative rounded-lg transition-colors ${
                     currentCanvasId === canvas.id
-                      ? 'bg-[#212121]'
+                      ? 'bg-gradient-to-r from-blue-500/10 to-blue-600/10 border-l-2 border-blue-500'
                       : 'hover:bg-[#212121]'
                   }`}
                 >
@@ -87,12 +95,12 @@ export default function Sidebar({
                     className="w-full text-left px-3 py-3 pr-10"
                   >
                     <div className="flex items-start gap-3">
-                      <MessageSquare className="w-4 h-4 text-[#8e8e8e] mt-0.5 flex-shrink-0" strokeWidth={2} />
+                      <MessageSquare className={`w-4 h-4 mt-0.5 flex-shrink-0 ${currentCanvasId === canvas.id ? 'text-blue-400' : 'text-[#b4b4b4]'}`} strokeWidth={2} />
                       <div className="flex-1 min-w-0">
                         <div className="text-sm text-[#ececec] truncate">
                           {canvas.name}
                         </div>
-                        <div className="text-xs text-[#8e8e8e] mt-1">
+                        <div className="text-xs text-[#b4b4b4] mt-1">
                           {canvas.nodeCount} nodes
                         </div>
                       </div>
@@ -105,7 +113,7 @@ export default function Sidebar({
                     }}
                     className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded opacity-0 group-hover:opacity-100 hover:bg-[#2f2f2f] transition-opacity"
                   >
-                    <Trash2 className="w-4 h-4 text-[#8e8e8e] hover:text-[#ef4444]" strokeWidth={2} />
+                    <Trash2 className="w-4 h-4 text-[#b4b4b4] hover:text-[#ef4444]" strokeWidth={2} />
                   </button>
                 </div>
               ))
@@ -115,13 +123,13 @@ export default function Sidebar({
 
         {/* Footer with user info */}
         <div className="p-3 border-t border-[#2f2f2f] flex-shrink-0 space-y-2">
-          <div className="text-xs text-[#8e8e8e]">
+          <div className="text-xs text-[#b4b4b4]">
             {canvases.length} {canvases.length === 1 ? 'canvas' : 'canvases'}
           </div>
           {userEmail && (
             <div className="flex items-center justify-between gap-2 bg-[#212121] rounded-lg px-3 py-2">
               <div className="flex items-center gap-2 min-w-0 flex-1">
-                <User className="w-4 h-4 text-[#8e8e8e] flex-shrink-0" strokeWidth={2} />
+                <User className="w-4 h-4 text-[#b4b4b4] flex-shrink-0" strokeWidth={2} />
                 <span className="text-xs text-[#ececec] truncate">{userEmail}</span>
               </div>
               {onSignOut && (
@@ -130,7 +138,7 @@ export default function Sidebar({
                   className="p-1 hover:bg-[#2f2f2f] rounded transition-colors flex-shrink-0"
                   title="Sign out"
                 >
-                  <LogOut className="w-4 h-4 text-[#8e8e8e]" strokeWidth={2} />
+                  <LogOut className="w-4 h-4 text-[#b4b4b4]" strokeWidth={2} />
                 </button>
               )}
             </div>
@@ -142,8 +150,9 @@ export default function Sidebar({
       {!isOpen && (
         <Button
           onClick={onToggle}
-          className="fixed top-3 left-3 z-50 bg-[#212121] hover:bg-[#2f2f2f] text-[#ececec] rounded-lg p-2 border-0"
+          className="fixed top-3 left-3 z-[60] bg-[#212121] hover:bg-[#2f2f2f] text-[#ececec] rounded-lg p-2 border-0 shadow-lg"
           size="sm"
+          aria-label="Open sidebar"
         >
           <PanelLeft className="w-5 h-5" />
         </Button>
