@@ -695,8 +695,8 @@ function ConversationCanvasInner({
         question,
         response: aiResponse,
         timestamp,
-        onAddFollowUp: (nodeId: string, q: string) => {
-          createConversationNode(q, nodeId);
+        onAddFollowUp: async (nodeId: string, q: string) => {
+          await createConversationNode(q, nodeId);
         },
         onDelete: handleDeleteNode,
         onMaximize: enterFullscreenMode,
@@ -727,8 +727,8 @@ function ConversationCanvasInner({
         ...node,
         data: {
           ...node.data,
-          onAddFollowUp: (nodeId: string, q: string) => {
-            createConversationNode(q, nodeId);
+          onAddFollowUp: async (nodeId: string, q: string) => {
+            await createConversationNode(q, nodeId);
           },
           onDelete: handleDeleteNode,
           onMaximize: enterFullscreenMode,
@@ -860,8 +860,8 @@ function ConversationCanvasInner({
           question,
           response: aiResponse,
           timestamp,
-          onAddFollowUp: (nodeId: string, q: string) => {
-            createConversationNode(q, nodeId);
+          onAddFollowUp: async (nodeId: string, q: string) => {
+            await createConversationNode(q, nodeId);
           },
           onDelete: handleDeleteNode,
           onMaximize: enterFullscreenMode,
@@ -888,8 +888,8 @@ function ConversationCanvasInner({
             ...node,
             data: {
               ...node.data,
-              onAddFollowUp: (nodeId: string, q: string) => {
-                createConversationNode(q, nodeId);
+              onAddFollowUp: async (nodeId: string, q: string) => {
+                await createConversationNode(q, nodeId);
               },
               onDelete: handleDeleteNode,
               onMaximize: enterFullscreenMode,
@@ -1016,6 +1016,10 @@ function ConversationCanvasInner({
       // Now create the node in the background (task 5.2)
       await createNodeInBackground(message, aiResponse);
       
+      // Only set loading to false after node creation is complete
+      setIsFullscreenLoading(false);
+      abortControllerRef.current = null;
+      
     } catch (error) {
       console.error('Error fetching AI response:', error);
       
@@ -1058,7 +1062,8 @@ function ConversationCanvasInner({
         isNetworkError,
         timestamp: new Date().toISOString(),
       });
-    } finally {
+      
+      // Set loading to false on error
       setIsFullscreenLoading(false);
       abortControllerRef.current = null;
     }
@@ -1088,8 +1093,8 @@ function ConversationCanvasInner({
         ...node,
         data: {
           ...node.data,
-          onAddFollowUp: (nodeId: string, q: string) => {
-            createConversationNode(q, nodeId);
+          onAddFollowUp: async (nodeId: string, q: string) => {
+            await createConversationNode(q, nodeId);
           },
           onDelete: handleDeleteNode,
           onMaximize: enterFullscreenMode,

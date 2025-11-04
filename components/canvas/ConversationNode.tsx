@@ -12,7 +12,7 @@ export interface ConversationNodeData extends Record<string, unknown> {
   question: string;
   response: string;
   timestamp: string;
-  onAddFollowUp: (nodeId: string, question: string) => void;
+  onAddFollowUp: (nodeId: string, question: string) => Promise<void>;
   onDelete?: (nodeId: string) => void;
   onMaximize?: (nodeId: string) => void;
 }
@@ -236,11 +236,18 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
                 onBlur={() => setIsInputFocused(false)}
                 onKeyDown={async (e) => {
                   if (e.key === 'Enter' && followUpText.trim() && !isSubmitting) {
-                    setIsSubmitting(true);
-                    data.onAddFollowUp(id, followUpText.trim());
+                    const question = followUpText.trim();
                     setFollowUpText('');
-                    // Reset after a delay to allow the node to be created
-                    setTimeout(() => setIsSubmitting(false), 1000);
+                    setIsSubmitting(true);
+                    
+                    // Small delay to ensure React flushes the state update
+                    await new Promise(resolve => setTimeout(resolve, 0));
+                    
+                    try {
+                      await data.onAddFollowUp(id, question);
+                    } finally {
+                      setIsSubmitting(false);
+                    }
                   }
                 }}
                 disabled={isSubmitting}
@@ -250,11 +257,18 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
               <Button
                 onClick={async () => {
                   if (followUpText.trim() && !isSubmitting) {
-                    setIsSubmitting(true);
-                    data.onAddFollowUp(id, followUpText.trim());
+                    const question = followUpText.trim();
                     setFollowUpText('');
-                    // Reset after a delay to allow the node to be created
-                    setTimeout(() => setIsSubmitting(false), 1000);
+                    setIsSubmitting(true);
+                    
+                    // Small delay to ensure React flushes the state update
+                    await new Promise(resolve => setTimeout(resolve, 0));
+                    
+                    try {
+                      await data.onAddFollowUp(id, question);
+                    } finally {
+                      setIsSubmitting(false);
+                    }
                   }
                 }}
                 disabled={!followUpText.trim() || isSubmitting}
