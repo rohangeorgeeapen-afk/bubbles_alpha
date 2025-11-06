@@ -104,7 +104,7 @@ export default function AuthModal({ open, onOpenChange }: AuthModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#2f2f2f] border border-[#4d4d4d] rounded-2xl max-w-md">
+      <DialogContent className="bg-[#2f2f2f] border border-[#4d4d4d] rounded-2xl max-w-md mx-4 sm:mx-auto">
         <DialogHeader>
           <DialogTitle className="text-[#ececec] font-semibold text-2xl">
             {isSignUp ? 'Create Account' : 'Welcome Back'}
@@ -124,7 +124,7 @@ export default function AuthModal({ open, onOpenChange }: AuthModalProps) {
           )}
 
           {success && (
-            <Alert className="bg-blue-500/5 border border-blue-400/30 text-blue-400 rounded-lg">
+            <Alert className="bg-[#00D5FF]/5 border border-[#00D5FF]/30 text-[#00D5FF] rounded-lg">
               <AlertDescription className="text-sm">{success}</AlertDescription>
             </Alert>
           )}
@@ -140,7 +140,7 @@ export default function AuthModal({ open, onOpenChange }: AuthModalProps) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={loading}
-              className="bg-[#212121] border border-[#4d4d4d] text-[#ececec] placeholder:text-[#8e8e8e] hover:border-[#565656] hover:bg-[#2a2a2a] focus:border-blue-400 focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-lg transition-all duration-200"
+              className="bg-[#212121] border border-[#4d4d4d] text-[#ececec] placeholder:text-[#8e8e8e] hover:border-[#565656] hover:bg-[#2a2a2a] focus:border-[#00D5FF] focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-lg transition-all duration-200"
             />
           </div>
 
@@ -156,7 +156,7 @@ export default function AuthModal({ open, onOpenChange }: AuthModalProps) {
               onChange={(e) => setPassword(e.target.value)}
               disabled={loading}
               autoComplete={isSignUp ? "new-password" : "current-password"}
-              className="bg-[#212121] border border-[#4d4d4d] text-[#ececec] placeholder:text-[#8e8e8e] hover:border-[#565656] hover:bg-[#2a2a2a] focus:border-blue-400 focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-lg transition-all duration-200"
+              className="bg-[#212121] border border-[#4d4d4d] text-[#ececec] placeholder:text-[#8e8e8e] hover:border-[#565656] hover:bg-[#2a2a2a] focus:border-[#00D5FF] focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-lg transition-all duration-200"
             />
             {isSignUp && (
               <p className="text-xs text-[#b4b4b4]">Must be at least 8 characters</p>
@@ -176,7 +176,7 @@ export default function AuthModal({ open, onOpenChange }: AuthModalProps) {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 disabled={loading}
                 autoComplete="new-password"
-                className="bg-[#212121] border border-[#4d4d4d] text-[#ececec] placeholder:text-[#8e8e8e] hover:border-[#565656] hover:bg-[#2a2a2a] focus:border-blue-400 focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-lg transition-all duration-200"
+                className="bg-[#212121] border border-[#4d4d4d] text-[#ececec] placeholder:text-[#8e8e8e] hover:border-[#565656] hover:bg-[#2a2a2a] focus:border-[#00D5FF] focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-lg transition-all duration-200"
               />
             </div>
           )}

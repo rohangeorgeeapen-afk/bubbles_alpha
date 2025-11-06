@@ -4,7 +4,6 @@ import React, { useCallback, useState, useRef, useEffect } from 'react';
 import {
   ReactFlow,
   MiniMap,
-  Controls,
   Background,
   useNodesState,
   useEdgesState,
@@ -613,7 +612,7 @@ function ConversationCanvasInner({
   const lastSavedState = useRef<string>('');
   
   useEffect(() => {
-    if (onUpdate && nodes.length > 0) {
+    if (onUpdate) {
       // Create a hash of the current state
       const currentState = JSON.stringify({ 
         nodeIds: nodes.map(n => n.id),
@@ -791,13 +790,32 @@ function ConversationCanvasInner({
     // Get all nodes to delete (the node itself + all descendants)
     const nodesToDelete = [nodeId, ...findDescendants(nodeId, edgesRef.current)];
     
-    // Remove nodes
-    setNodes(nds => nds.filter(n => !nodesToDelete.includes(n.id)));
-    
-    // Remove edges connected to deleted nodes
-    setEdges(eds => eds.filter(e => 
+    // Remove edges connected to deleted nodes first
+    const updatedEdges = edgesRef.current.filter(e => 
       !nodesToDelete.includes(e.source) && !nodesToDelete.includes(e.target)
-    ));
+    );
+    
+    // Remove nodes and recalculate layout
+    const remainingNodes = nodesRef.current.filter(n => !nodesToDelete.includes(n.id));
+    
+    // Recalculate layout for remaining nodes
+    const { nodes: layoutedNodes } = getLayoutedElements(remainingNodes, updatedEdges);
+    
+    // Update nodes with callbacks
+    const nodesWithCallbacks = layoutedNodes.map(node => ({
+      ...node,
+      data: {
+        ...node.data,
+        onAddFollowUp: async (nodeId: string, q: string) => {
+          await createConversationNode(q, nodeId);
+        },
+        onDelete: handleDeleteNode,
+        onMaximize: enterFullscreenMode,
+      }
+    }));
+    
+    setNodes(nodesWithCallbacks);
+    setEdges(updatedEdges);
     
     // Show undo toast
     setShowUndoToast(true);
@@ -812,7 +830,7 @@ function ConversationCanvasInner({
       setShowUndoToast(false);
       setDeletedState(null);
     }, 5000);
-  }, [setNodes, setEdges]);
+  }, [setNodes, setEdges, createConversationNode, enterFullscreenMode]);
   
   // Undo delete
   const handleUndoDelete = useCallback(() => {
@@ -1208,6 +1226,15 @@ function ConversationCanvasInner({
       })
     : nodes;
 
+  // Update body data attribute when fullscreen state changes (for hiding sidebar on mobile)
+  useEffect(() => {
+    if (fullscreenState.isFullscreen || fullscreenState.isTransitioning) {
+      document.body.setAttribute('data-fullscreen', 'true');
+    } else {
+      document.body.removeAttribute('data-fullscreen');
+    }
+  }, [fullscreenState.isFullscreen, fullscreenState.isTransitioning]);
+
   return (
     <div className="w-full h-screen relative">
       {/* Render fullscreen chat view with smooth fade + scale animation */}
@@ -1289,6 +1316,8 @@ function ConversationCanvasInner({
           nodesDraggable={false}
           elementsSelectable={true}
           selectNodesOnDrag={false}
+          zoomActivationKeyCode={null}
+          preventScrolling={true}
           proOptions={{ hideAttribution: true }}
           defaultEdgeOptions={{
             animated: false,
@@ -1297,12 +1326,59 @@ function ConversationCanvasInner({
         <Background variant={BackgroundVariant.Dots} color="rgba(255, 255, 255, 0.03)" gap={20} size={1} />
         {nodes.length > 0 && (
           <>
-            <Controls 
-              className="!bg-transparent !border-none !shadow-none"
-              showZoom={true}
-              showFitView={true}
-              showInteractive={false}
-            />
+            <div className="absolute bottom-6 left-6 flex flex-col gap-2 z-10">
+              <button
+                onClick={() => reactFlowInstance.zoomIn()}
+                className="w-10 h-10 bg-[#2a2a2a] text-[#ececec] rounded-lg font-normal text-sm border border-[#4a4a4a] shadow-md transition-all duration-200 hover:border-[#00D5FF]/50 hover:shadow-lg hover:shadow-[#00D5FF]/30 hover:-translate-y-0.5 flex items-center justify-center"
+                style={{ background: 'rgba(42, 42, 42, 0.8)' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(96, 165, 250, 0.2))';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(42, 42, 42, 0.8)';
+                }}
+                aria-label="Zoom in"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+              </button>
+              
+              <button
+                onClick={() => reactFlowInstance.zoomOut()}
+                className="w-10 h-10 bg-[#2a2a2a] text-[#ececec] rounded-lg font-normal text-sm border border-[#4a4a4a] shadow-md transition-all duration-200 hover:border-[#00D5FF]/50 hover:shadow-lg hover:shadow-[#00D5FF]/30 hover:-translate-y-0.5 flex items-center justify-center"
+                style={{ background: 'rgba(42, 42, 42, 0.8)' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(96, 165, 250, 0.2))';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(42, 42, 42, 0.8)';
+                }}
+                aria-label="Zoom out"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+              </button>
+              
+              <button
+                onClick={() => reactFlowInstance.fitView({ padding: 0.2 })}
+                className="w-10 h-10 bg-[#2a2a2a] text-[#ececec] rounded-lg font-normal text-sm border border-[#4a4a4a] shadow-md transition-all duration-200 hover:border-[#00D5FF]/50 hover:shadow-lg hover:shadow-[#00D5FF]/30 hover:-translate-y-0.5 flex items-center justify-center"
+                style={{ background: 'rgba(42, 42, 42, 0.8)' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(96, 165, 250, 0.2))';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(42, 42, 42, 0.8)';
+                }}
+                aria-label="Fit view"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                  <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                </svg>
+              </button>
+            </div>
             <MiniMap 
               className="!bg-[#1a1a1a] !border-[#3a3a3a] !rounded-2xl !shadow-2xl !overflow-hidden backdrop-blur-sm" 
               maskColor="rgba(13, 13, 13, 0.85)"
@@ -1317,11 +1393,11 @@ function ConversationCanvasInner({
         
         {/* ChatGPT-style centered input when no nodes */}
         {nodes.length === 0 && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
-            <div className="text-center mb-8">
-              <h1 className="text-2xl font-normal text-[#ececec] mb-2">What&apos;s on your mind today?</h1>
+          <div className="absolute inset-0 flex flex-col items-center justify-center z-10 px-4">
+            <div className="text-center mb-6 md:mb-8">
+              <h1 className="text-xl md:text-2xl font-normal text-[#ececec] mb-2">What&apos;s on your mind today?</h1>
             </div>
-            <div className="w-full max-w-3xl px-4">
+            <div className="w-full max-w-3xl">
               <div className="relative">
                 <Input
                   type="text"
@@ -1334,17 +1410,19 @@ function ConversationCanvasInner({
                     }
                   }}
                   disabled={isLoading}
-                  className="w-full h-14 bg-[#2f2f2f] border border-[#565656] text-[#ececec] placeholder:text-[#8e8e8e] rounded-3xl px-5 pr-14 focus-visible:ring-0 focus-visible:ring-offset-0 text-base"
+                  className="w-full h-12 md:h-14 bg-[#2f2f2f] border border-[#565656] text-[#ececec] placeholder:text-[#8e8e8e] rounded-3xl px-4 md:px-5 pr-12 md:pr-14 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm md:text-base"
+                  style={{ fontSize: '16px' }}
                 />
                 {isLoading ? (
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                  <div className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2">
                     <div className="w-5 h-5 border-2 border-[#565656] border-t-[#ececec] rounded-full animate-spin"></div>
                   </div>
                 ) : (
                   <Button
                     onClick={handleStartConversation}
                     disabled={!searchTerm.trim()}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 p-0 rounded-full bg-[#ececec] hover:bg-[#d4d4d4] text-[#0d0d0d] disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
+                    className="absolute right-1.5 md:right-2 top-1/2 -translate-y-1/2 h-9 w-9 md:h-10 md:w-10 p-0 rounded-full bg-[#ececec] hover:bg-[#d4d4d4] text-[#0d0d0d] disabled:opacity-30 disabled:cursor-not-allowed transition-opacity flex items-center justify-center"
+                    aria-label="Send message"
                   >
                     <ArrowUp className="w-4 h-4" strokeWidth={2} />
                   </Button>

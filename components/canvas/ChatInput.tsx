@@ -129,7 +129,7 @@ export default function ChatInput({
   const canSend = inputValue.trim() && !isDisabled;
 
   return (
-    <div className={`border-t border-[#4d4d4d] bg-[#2a2a2a] ${isMobile ? 'px-4 py-2' : 'px-6 py-3'} flex-shrink-0`}>
+    <div className={`border-t border-[#4d4d4d] bg-[#2a2a2a] ${isMobile ? 'px-3 py-3' : 'px-6 py-3'} flex-shrink-0`}>
       <div className={`${isMobile ? 'max-w-full' : 'max-w-4xl'} mx-auto relative`}>
         <label htmlFor="chat-input" className="sr-only">
           Type your message
@@ -140,40 +140,40 @@ export default function ChatInput({
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={isMobile ? "Type your message..." : placeholder}
+          placeholder={isMobile ? "Message..." : placeholder}
           disabled={isDisabled}
           aria-label="Chat message input"
           aria-describedby="chat-input-help"
-          className={`w-full ${isMobile ? 'max-h-[120px] text-base' : 'max-h-[150px] text-[15px]'} bg-[#2f2f2f] border border-[#565656] text-[#ececec] placeholder:text-[#8e8e8e] rounded-2xl px-4 py-2 pr-11 resize-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-[#6e6e6e] leading-normal overflow-y-auto ${prefersReducedMotion ? '' : 'transition-all duration-200'}`}
+          className={`w-full ${isMobile ? 'max-h-[120px] text-base' : 'max-h-[150px] text-[15px]'} bg-[#2f2f2f] border border-[#565656] text-[#ececec] placeholder:text-[#8e8e8e] ${isMobile ? 'rounded-xl' : 'rounded-lg'} ${isMobile ? 'px-3 py-2.5 pr-12' : 'px-4 py-2 pr-11'} resize-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-[#6e6e6e] leading-normal overflow-y-auto ${prefersReducedMotion ? '' : 'transition-all duration-200'}`}
           style={{ 
             fontSize: isMobile ? '16px' : '15px',
-            minHeight: isMobile ? '40px' : '42px',
-            height: isMobile ? '40px' : '42px',
+            minHeight: isMobile ? '44px' : '42px',
+            height: isMobile ? '44px' : '42px',
             scrollbarWidth: 'none',
             msOverflowStyle: 'none',
           }}
           rows={1}
         />
         <span id="chat-input-help" className="sr-only">
-          Press Enter to send, Shift+Enter for new line, Escape to close
+          {isMobile ? 'Press Enter to send' : 'Press Enter to send, Shift+Enter for new line, Escape to close'}
         </span>
         <Button
           onClick={handleSubmit}
           disabled={!canSend}
           aria-label={isSubmitting || isLoading ? 'Sending message' : 'Send message'}
-          className={`absolute right-1 bottom-1 ${isMobile ? 'h-8 w-8' : 'h-8 w-8'} p-0 rounded-full bg-[#ececec] hover:bg-[#d4d4d4] ${prefersReducedMotion ? '' : 'hover:scale-110 active:scale-95'} text-[#0d0d0d] disabled:opacity-30 disabled:cursor-not-allowed ${prefersReducedMotion ? '' : 'transition-all duration-200'}`}
+          className={`absolute right-0.5 top-0.5 ${isMobile ? 'h-[40px] w-[40px] rounded-lg' : 'h-[38px] w-[38px] rounded-md'} p-0 bg-[#ececec] hover:bg-[#d4d4d4] ${prefersReducedMotion ? '' : 'hover:scale-105 active:scale-95'} text-[#0d0d0d] disabled:opacity-30 disabled:cursor-not-allowed ${prefersReducedMotion ? '' : 'transition-all duration-200'} shadow-sm flex items-center justify-center`}
           style={{ willChange: prefersReducedMotion ? 'auto' : 'transform, background-color' }}
           title="Send message (Enter)"
         >
           {isSubmitting || isLoading ? (
             <div 
-              className="w-4 h-4 border-2 border-[#565656] border-t-[#0d0d0d] rounded-full animate-spin"
+              className={`${isMobile ? 'w-4.5 h-4.5' : 'w-4 h-4'} border-2 border-[#565656] border-t-[#0d0d0d] rounded-full animate-spin`}
               style={{ willChange: prefersReducedMotion ? 'auto' : 'transform' }}
               role="status"
               aria-label="Loading"
             ></div>
           ) : (
-            <ArrowUp className={`w-4 h-4 ${prefersReducedMotion ? '' : 'transition-transform duration-200'}`} strokeWidth={2} />
+            <ArrowUp className={`${isMobile ? 'w-5 h-5' : 'w-4 h-4'} ${prefersReducedMotion ? '' : 'transition-transform duration-200'}`} strokeWidth={2.5} />
           )}
         </Button>
       </div>

@@ -119,11 +119,19 @@ export default function CanvasManager() {
     }
   }, [user, authLoading, loadCanvases, hasInitialized]);
 
-
-
-
-
-
+  // Helper function to generate a unique canvas name
+  const generateUniqueCanvasName = useCallback((existingCanvases: CanvasData[]): string => {
+    const existingNames = new Set(existingCanvases.map(c => c.name.toLowerCase()));
+    let counter = 1;
+    let name = `Canvas ${counter}`;
+    
+    while (existingNames.has(name.toLowerCase())) {
+      counter++;
+      name = `Canvas ${counter}`;
+    }
+    
+    return name;
+  }, []);
 
   const handleNewCanvas = async () => {
     if (!user) {
@@ -134,11 +142,14 @@ export default function CanvasManager() {
 
     console.log('Creating new canvas...');
 
+    // Generate unique name
+    const uniqueName = generateUniqueCanvasName(canvases);
+
     // Create temporary canvas for optimistic UI update
     const tempId = `temp-${Date.now()}`;
     const tempCanvas: CanvasData = {
       id: tempId,
-      name: `Canvas ${canvases.length + 1}`,
+      name: uniqueName,
       createdAt: new Date().toISOString(),
       nodes: [],
       edges: [],
@@ -197,6 +208,65 @@ export default function CanvasManager() {
     setCurrentCanvasId(id);
   };
 
+  const handleRenameCanvas = async (id: string, newName: string) => {
+    if (!user) {
+      console.error('No user logged in');
+      return;
+    }
+
+    // Trim the name
+    const trimmedName = newName.trim();
+    
+    // Validate name is not empty
+    if (!trimmedName) {
+      alert('Canvas name cannot be empty');
+      return;
+    }
+
+    // Check for duplicate names (case-insensitive, excluding current canvas)
+    const isDuplicate = canvases.some(
+      c => c.id !== id && c.name.toLowerCase() === trimmedName.toLowerCase()
+    );
+
+    if (isDuplicate) {
+      alert(`A canvas named "${trimmedName}" already exists. Please choose a different name.`);
+      return;
+    }
+
+    // Store old state for rollback
+    const oldCanvases = canvases;
+
+    // Optimistic update - update UI immediately
+    setCanvases((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, name: trimmedName } : c))
+    );
+
+    // If it's a temporary canvas (not yet saved), just update locally
+    if (id.startsWith('temp-')) {
+      return;
+    }
+
+    // Update in database in background
+    try {
+      const { error } = await supabase
+        .from('canvases')
+        .update({ name: trimmedName })
+        .eq('id', id);
+
+      if (error) {
+        console.error('Failed to rename canvas:', error);
+        // Rollback on error
+        setCanvases(oldCanvases);
+        alert(`Failed to rename canvas: ${error.message}`);
+      }
+    } catch (error: any) {
+      console.error('Failed to rename canvas:', error);
+      // Rollback on error
+      setCanvases(oldCanvases);
+      alert(`Failed to rename canvas: ${error.message || 'Network error'}`);
+    }
+  };
+
   const handleDeleteCanvas = async (id: string) => {
     if (!user) {
       console.error('No user logged in');
@@ -249,10 +319,11 @@ export default function CanvasManager() {
 
     // If no canvas exists and we have nodes, create one automatically
     if (!currentCanvasId && nodes.length > 0) {
+      const uniqueName = generateUniqueCanvasName(canvases);
       const tempId = `temp-${Date.now()}`;
       const tempCanvas: CanvasData = {
         id: tempId,
-        name: `Canvas ${canvases.length + 1}`,
+        name: uniqueName,
         createdAt: new Date().toISOString(),
         nodes,
         edges,
@@ -379,31 +450,219 @@ export default function CanvasManager() {
   if (!user) {
     return (
       <>
-        <div className="flex h-screen bg-[#212121] items-center justify-center">
-          <div className="text-center">
-            <h1 
-              className="text-6xl mb-3 font-bold tracking-tight" 
-              style={{ 
-                fontFamily: 'Montserrat, sans-serif', 
-                fontWeight: 700, 
-                backgroundImage: 'linear-gradient(90deg, #7dd3fc, #60a5fa)',
-                backgroundClip: 'text',
-                WebkitBackgroundClip: 'text',
-                color: 'transparent',
-                WebkitTextFillColor: 'transparent'
-              }}
-            >
-              bubbles
-            </h1>
-            <p className="text-[#b4b4b4] text-lg mb-8">Think in branches, not lines</p>
-            <button
-              onClick={() => setAuthModalOpen(true)}
-              className="px-6 py-2.5 bg-[#2a2a2a] text-[#ececec] text-sm rounded-lg font-medium border border-[#3a3a3a] transition-all duration-200 hover:border-blue-500/30 hover:shadow-lg hover:shadow-blue-500/20"
-            >
-              Get Started
-            </button>
-          </div>
+        <div className="min-h-screen bg-[#1a1a1a] overflow-y-auto">
+          {/* Hero Section */}
+          <section className="max-w-6xl mx-auto px-6 md:px-8 pt-20 md:pt-32 pb-16 md:pb-24 border-b border-[#2a2a2a]">
+            <div className="mb-16 md:mb-20">
+              <div className="flex flex-col items-center mb-8">
+                {/* Logo Image */}
+                <div 
+                  className="relative w-32 h-32 md:w-40 md:h-40 mb-4 cursor-pointer group transition-all duration-500"
+                  style={{
+                    filter: 'drop-shadow(0 0 0 transparent)',
+                    transition: 'filter 0.5s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.filter = 'drop-shadow(0 12px 40px rgba(0, 213, 255, 0.5))';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.filter = 'drop-shadow(0 0 0 transparent)';
+                  }}
+                  onClick={(e) => {
+                    const img = e.currentTarget.querySelector('img');
+                    if (img) {
+                      const currentRotation = parseInt(img.style.rotate || '0');
+                      img.style.rotate = `${currentRotation + 360}deg`;
+                    }
+                  }}
+                >
+                  <img 
+                    src="/logo.png" 
+                    alt="Bubbles Logo" 
+                    className="w-full h-full object-contain animate-bubble-pop transition-all duration-500 ease-out"
+                    style={{ 
+                      background: 'transparent',
+                      transition: 'transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), rotate 1s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'scale(1.4)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)';
+                    }}
+                  />
+                </div>
+                
+                <h1 
+                  className="text-5xl md:text-7xl font-bold tracking-tight leading-none text-center" 
+                  style={{ 
+                    fontFamily: '"Sk-Modernist", "Montserrat", sans-serif', 
+                    fontWeight: 700, 
+                    backgroundImage: 'linear-gradient(to bottom, #ffffff 30%, #e0f2fe 70%)',
+                    backgroundClip: 'text',
+                    WebkitBackgroundClip: 'text',
+                    color: 'transparent',
+                    WebkitTextFillColor: 'transparent'
+                  }}
+                >
+                  bubbles
+                </h1>
+              </div>
+              <p className="text-[#b4b4b4] text-lg md:text-xl mb-8 max-w-2xl mx-auto leading-relaxed text-center">
+                Explore every question without losing your train of thought.
+                <br />
+                <span className="text-[#8e8e8e]">Branch conversations naturally. Follow curiosity freely.</span>
+              </p>
+              <div className="flex justify-center">
+              <button
+                onClick={() => setAuthModalOpen(true)}
+                className="group relative px-5 md:px-6 py-2 md:py-2.5 bg-white text-[#212121] text-sm md:text-base rounded-xl font-semibold overflow-hidden inline-flex items-center gap-2"
+                style={{
+                  transition: 'transform 0.3s cubic-bezier(0.34, 1.2, 0.64, 1), box-shadow 0.3s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 10px 25px -5px rgba(0, 213, 255, 0.3)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                  e.currentTarget.style.boxShadow = '0 0 0 0 transparent';
+                }}
+                onMouseDown={(e) => {
+                  e.currentTarget.style.transform = 'scale(0.98)';
+                }}
+                onMouseUp={(e) => {
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                }}
+              >
+                <span className="relative z-10 flex items-center gap-2">
+                  Get Started
+                  <svg 
+                    className="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1" 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </span>
+                <div className="absolute inset-0 bg-gradient-to-r from-white to-gray-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              </button>
+              </div>
+            </div>
+          </section>
+
+          {/* Features Section */}
+          <section className="max-w-6xl mx-auto px-6 md:px-8 py-16 md:py-24 border-b border-[#2a2a2a]">
+            <div className="grid md:grid-cols-3 gap-8 md:gap-12">
+              <div className="text-center group">
+                <img 
+                  src="/icon-curiosity.png" 
+                  alt="Follow Your Curiosity" 
+                  className="w-16 h-16 md:w-20 md:h-20 mx-auto mb-6 object-contain transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6"
+                />
+                <h3 className="text-[#ececec] text-xl font-semibold mb-3">Follow Your Curiosity</h3>
+                <p className="text-[#8e8e8e] leading-relaxed">
+                  Ask follow-up questions on any topic without derailing your main conversation
+                </p>
+              </div>
+
+              <div className="text-center group">
+                <img 
+                  src="/icon-organized.png" 
+                  alt="Stay Organized" 
+                  className="w-16 h-16 md:w-20 md:h-20 mx-auto mb-6 object-contain transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6"
+                />
+                <h3 className="text-[#ececec] text-xl font-semibold mb-3">Stay Organized</h3>
+                <p className="text-[#8e8e8e] leading-relaxed">
+                  See your entire conversation tree at a glance. Navigate between topics effortlessly
+                </p>
+              </div>
+
+              <div className="text-center group">
+                <img 
+                  src="/icon-context.png" 
+                  alt="Keep Context" 
+                  className="w-16 h-16 md:w-20 md:h-20 mx-auto mb-6 object-contain transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6"
+                />
+                <h3 className="text-[#ececec] text-xl font-semibold mb-3">Keep Context</h3>
+                <p className="text-[#8e8e8e] leading-relaxed">
+                  Each branch maintains its own context. Return to any conversation thread anytime
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* How It Works & CTA Section */}
+          <section className="max-w-6xl mx-auto px-6 md:px-8 py-16 md:py-24">
+            <div className="max-w-3xl mx-auto text-center mb-16">
+              <h2 className="text-[#ececec] text-3xl md:text-4xl font-bold mb-6">How It Works</h2>
+              <div className="space-y-6 text-left mb-12">
+                <div className="flex gap-4 items-start">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#00D5FF] text-[#1a1a1a] font-bold flex items-center justify-center">1</div>
+                  <div>
+                    <h4 className="text-[#ececec] font-semibold mb-1">Ask your question</h4>
+                    <p className="text-[#8e8e8e]">Start with any question or topic you're curious about</p>
+                  </div>
+                </div>
+                <div className="flex gap-4 items-start">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#00D5FF] text-[#1a1a1a] font-bold flex items-center justify-center">2</div>
+                  <div>
+                    <h4 className="text-[#ececec] font-semibold mb-1">Branch off naturally</h4>
+                    <p className="text-[#8e8e8e]">When something sparks your curiosity, create a new branch to explore it</p>
+                  </div>
+                </div>
+                <div className="flex gap-4 items-start">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#00D5FF] text-[#1a1a1a] font-bold flex items-center justify-center">3</div>
+                  <div>
+                    <h4 className="text-[#ececec] font-semibold mb-1">Navigate your knowledge tree</h4>
+                    <p className="text-[#8e8e8e]">Switch between branches, zoom in on details, or step back to see the big picture</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="text-center">
+              <p className="text-[#b4b4b4] text-lg mb-6">Ready to think differently?</p>
+              <button
+                onClick={() => setAuthModalOpen(true)}
+                className="group relative px-10 md:px-12 py-4 md:py-5 bg-white text-[#212121] text-base md:text-lg rounded-xl font-semibold overflow-hidden inline-flex items-center gap-2"
+                style={{
+                  transition: 'transform 0.3s cubic-bezier(0.34, 1.2, 0.64, 1), box-shadow 0.3s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 10px 25px -5px rgba(0, 213, 255, 0.3)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                  e.currentTarget.style.boxShadow = '0 0 0 0 transparent';
+                }}
+                onMouseDown={(e) => {
+                  e.currentTarget.style.transform = 'scale(0.98)';
+                }}
+                onMouseUp={(e) => {
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                }}
+              >
+                <span className="relative z-10 flex items-center gap-2">
+                  Start Exploring
+                  <svg 
+                    className="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1" 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </span>
+                <div className="absolute inset-0 bg-gradient-to-r from-white to-gray-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              </button>
+              <p className="text-[#6e6e6e] text-sm mt-4">Free to use • No credit card required</p>
+            </div>
+          </section>
         </div>
+        
         <AuthModal 
           open={authModalOpen && !user} 
           onOpenChange={setAuthModalOpen} 
@@ -413,20 +672,21 @@ export default function CanvasManager() {
   }
 
   return (
-    <div className="flex h-screen bg-[#212121]">
+    <div className="flex h-screen bg-[#212121] overflow-hidden">
       <Sidebar
         canvases={canvasSummaries}
         currentCanvasId={currentCanvasId}
         onSelectCanvas={handleSelectCanvas}
         onNewCanvas={handleNewCanvas}
         onDeleteCanvas={handleDeleteCanvas}
+        onRenameCanvas={handleRenameCanvas}
         isOpen={sidebarOpen}
         onToggle={() => setSidebarOpen(!sidebarOpen)}
         userEmail={user?.email}
         onSignOut={handleSignOut}
       />
 
-      <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-0'}`}>
+      <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'md:ml-64 ml-0' : 'ml-0'}`}>
         {hasInitialized && (
           <ConversationCanvas
             key={currentCanvasId || 'empty-canvas'}

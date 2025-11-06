@@ -3,6 +3,7 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 
 interface MarkdownContentProps {
   content: string;
@@ -14,6 +15,7 @@ export default function MarkdownContent({ content, className = '' }: MarkdownCon
     <div className={`markdown-content ${className}`}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeRaw]}
         components={{
           p: ({ children }) => <p className="mb-4 last:mb-0 leading-[1.7]">{children}</p>,
           h1: ({ children }) => <h1 className="text-[19px] font-semibold mb-4 mt-5 text-[#ececec] leading-[1.4]">{children}</h1>,

@@ -369,7 +369,7 @@ export default function FullscreenChatView({
       </div>
       
       {/* Header with OS-specific window controls */}
-      <div className={`${isMobile ? 'h-12' : 'h-14'} bg-[#2a2a2a] border-b border-[#4d4d4d] flex items-center ${isMobile ? 'px-4' : 'px-6'} ${!sidebarOpen ? 'pl-16' : ''} flex-shrink-0 ${!isMac ? 'justify-end' : ''}`}>
+      <div className={`${isMobile ? 'h-12' : 'h-14'} bg-[#2a2a2a] border-b border-[#4d4d4d] flex items-center ${isMobile ? 'px-4' : 'px-6'} ${!sidebarOpen && !isMobile ? 'pl-16' : ''} flex-shrink-0 ${!isMac ? 'justify-end' : ''}`}>
         {isMac ? (
           /* macOS window controls - left side */
           <div className="flex gap-2 nodrag nopan">

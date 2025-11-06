@@ -78,10 +78,24 @@ const config: Config = {
             height: '0',
           },
         },
+        'bubble-pop': {
+          '0%': {
+            transform: 'scale(0.8)',
+            opacity: '0',
+          },
+          '50%': {
+            transform: 'scale(1.1)',
+          },
+          '100%': {
+            transform: 'scale(1)',
+            opacity: '1',
+          },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
+        'bubble-pop': 'bubble-pop 0.6s ease-out',
       },
     },
   },

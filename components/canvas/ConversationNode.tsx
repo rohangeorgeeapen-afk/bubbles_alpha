@@ -5,7 +5,7 @@ import { Handle, Position, NodeProps } from '@xyflow/react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowUp } from 'lucide-react';
+import { ArrowUp, Maximize2, X } from 'lucide-react';
 import MarkdownContent from '@/components/shared/MarkdownContent';
 
 export interface ConversationNodeData extends Record<string, unknown> {
@@ -26,14 +26,18 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const showFooter = isHovered || isInputFocused;
   
-  // Detect OS and motion preferences
+  // Detect OS, mobile, and motion preferences
   const [isMac, setIsMac] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   
   React.useEffect(() => {
     // Detect if user is on macOS
     const userAgent = window.navigator.userAgent.toLowerCase();
     setIsMac(userAgent.includes('mac'));
+    
+    // Detect if user is on mobile
+    setIsMobile(window.innerWidth < 768);
     
     // Check for reduced motion preference
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -43,8 +47,16 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
       setPrefersReducedMotion(e.matches);
     };
     
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
     mediaQuery.addEventListener('change', handleMotionChange);
-    return () => mediaQuery.removeEventListener('change', handleMotionChange);
+    window.addEventListener('resize', handleResize);
+    return () => {
+      mediaQuery.removeEventListener('change', handleMotionChange);
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
   // Completely prevent ReactFlow from handling any mouse events in text areas
@@ -58,7 +70,8 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
       <Card 
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        className={`w-[450px] bg-[#2f2f2f] border border-[#4d4d4d] rounded-2xl shadow-lg overflow-hidden flex flex-col nowheel select-none ${prefersReducedMotion ? '' : 'transition-all duration-300 ease-in-out'} ${
+        onTouchStart={() => setIsHovered(true)}
+        className={`w-[min(450px,calc(100vw-2rem))] bg-[#2f2f2f] border border-[#4d4d4d] rounded-2xl shadow-lg overflow-hidden flex flex-col nowheel select-none ${prefersReducedMotion ? '' : 'transition-all duration-300 ease-in-out'} ${
           isLongContent 
             ? (showFooter ? 'h-[468px]' : 'h-[400px]')
             : (showFooter ? '' : '')
@@ -148,7 +161,7 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
                   {/* Maximize button */}
                   <button
                     onClick={() => data.onMaximize?.(id)}
-                    className={`w-11 h-8 flex items-center justify-center ${prefersReducedMotion ? '' : 'transition-colors'} ${
+                    className={`w-11 h-8 flex items-center justify-center rounded ${prefersReducedMotion ? '' : 'transition-colors'} ${
                       isHovered 
                         ? 'hover:bg-[#3a3a3a] cursor-pointer' 
                         : 'cursor-default'
@@ -156,15 +169,13 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
                     aria-label="Maximize to fullscreen"
                     title="Maximize to fullscreen"
                   >
-                    <svg width="10" height="10" viewBox="0 0 10 10" className="text-[#ececec]">
-                      <rect x="0" y="0" width="10" height="10" fill="none" stroke="currentColor" strokeWidth="1.5"/>
-                    </svg>
+                    <Maximize2 className="w-4 h-4 text-[#ececec]" />
                   </button>
                   
                   {/* Close button */}
                   <button
                     onClick={() => data.onDelete?.(id)}
-                    className={`w-11 h-8 flex items-center justify-center ${prefersReducedMotion ? '' : 'transition-colors'} ${
+                    className={`w-11 h-8 flex items-center justify-center rounded ${prefersReducedMotion ? '' : 'transition-colors'} ${
                       isHovered 
                         ? 'hover:bg-[#e81123]' 
                         : ''
@@ -172,9 +183,7 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
                     aria-label="Delete this node and all its children"
                     title="Delete this node and all its children"
                   >
-                    <svg width="10" height="10" viewBox="0 0 10 10" className="text-[#ececec]">
-                      <path d="M1 1L9 9M9 1L1 9" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
-                    </svg>
+                    <X className="w-4 h-4 text-[#ececec]" />
                   </button>
                 </div>
               )}
@@ -234,6 +243,8 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
                 onChange={(e) => setFollowUpText(e.target.value)}
                 onFocus={() => setIsInputFocused(true)}
                 onBlur={() => setIsInputFocused(false)}
+                onMouseDown={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
                 onKeyDown={async (e) => {
                   if (e.key === 'Enter' && followUpText.trim() && !isSubmitting) {
                     const question = followUpText.trim();
@@ -252,7 +263,7 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
                 }}
                 disabled={isSubmitting}
                 aria-label="Follow-up question input"
-                className="w-full h-9 bg-[#2f2f2f] border border-[#565656] text-[#ececec] placeholder:text-[#8e8e8e] rounded-lg px-3 pr-10 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm nodrag"
+                className="w-full h-9 bg-[#2f2f2f] border border-[#565656] text-[#ececec] placeholder:text-[#8e8e8e] rounded-lg px-3 pr-10 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm nodrag nopan"
               />
               <Button
                 onClick={async () => {
