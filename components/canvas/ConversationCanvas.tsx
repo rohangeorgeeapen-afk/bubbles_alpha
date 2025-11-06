@@ -763,7 +763,8 @@ function ConversationCanvasInner({
     });
 
     setIsLoading(false);
-  }, [getConversationHistory, setNodes, setEdges, handleSmartPanning]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [getConversationHistory, setNodes, setEdges, handleSmartPanning, reactFlowInstance]);
 
   // Delete node and all its descendants
   const handleDeleteNode = useCallback((nodeId: string) => {

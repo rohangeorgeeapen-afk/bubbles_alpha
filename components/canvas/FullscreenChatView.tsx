@@ -267,7 +267,7 @@ export default function FullscreenChatView({
         window.visualViewport?.removeEventListener('resize', handleVisualViewportResize);
       };
     }
-  }, [isMobile, userHasScrolled]);
+  }, [isMobile, userHasScrolled, scrollToBottom]);
 
   // Auto-scroll to bottom when new message is added
   const scrollToBottom = (smooth: boolean = true) => {
@@ -282,10 +282,12 @@ export default function FullscreenChatView({
   // Scroll to bottom on mount and when messages change
   useEffect(() => {
     scrollToBottom(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     scrollToBottom(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages]);
 
   // Track if user has manually scrolled - with virtual scrolling support
