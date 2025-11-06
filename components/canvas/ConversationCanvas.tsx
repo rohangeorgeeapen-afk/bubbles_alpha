@@ -605,7 +605,8 @@ function ConversationCanvasInner({
     // Otherwise, start panning immediately
     setIsPanning(true);
     handleSmartPanningInternal(parentId, childId, currentNodes);
-  }, [isPanning, handleSmartPanningInternal]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPanning]);
 
   // Notify parent of changes - strip out functions before saving
   // Use a ref to track the last saved state to avoid infinite loops
@@ -944,7 +945,8 @@ function ConversationCanvasInner({
       });
       // Messages are already in the conversation thread, so they're preserved
     }
-  }, [fullscreenState.activeNodeId, setNodes, setEdges, handleDeleteNode, enterFullscreenMode, buildConversationThread]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fullscreenState.activeNodeId, setNodes, setEdges, buildConversationThread]);
 
   // Handle message sending in fullscreen mode
   const handleFullscreenMessage = useCallback(async (message: string) => {

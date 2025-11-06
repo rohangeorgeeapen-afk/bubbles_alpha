@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect, useState, useMemo, memo } from 'react';
+import React, { useRef, useEffect, useState, useMemo, memo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { X, ArrowDown } from 'lucide-react';
 import MarkdownContent from '@/components/shared/MarkdownContent';
@@ -235,6 +235,16 @@ export default function FullscreenChatView({
     };
   }, []);
 
+  // Auto-scroll to bottom when new message is added
+  const scrollToBottom = useCallback((smooth: boolean = true) => {
+    if (messagesEndRef.current && !userHasScrolled) {
+      messagesEndRef.current.scrollIntoView({ 
+        behavior: (smooth && !prefersReducedMotion) ? 'smooth' : 'auto',
+        block: 'end'
+      });
+    }
+  }, [userHasScrolled, prefersReducedMotion]);
+
   // Maintain scroll position on window resize
   useEffect(() => {
     const handleResize = () => {
@@ -247,7 +257,7 @@ export default function FullscreenChatView({
 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [userHasScrolled]);
+  }, [userHasScrolled, scrollToBottom]);
 
   // Handle virtual keyboard on mobile - scroll to bottom when keyboard appears
   useEffect(() => {
@@ -269,26 +279,14 @@ export default function FullscreenChatView({
     }
   }, [isMobile, userHasScrolled, scrollToBottom]);
 
-  // Auto-scroll to bottom when new message is added
-  const scrollToBottom = (smooth: boolean = true) => {
-    if (messagesEndRef.current && !userHasScrolled) {
-      messagesEndRef.current.scrollIntoView({ 
-        behavior: (smooth && !prefersReducedMotion) ? 'smooth' : 'auto',
-        block: 'end'
-      });
-    }
-  };
-
   // Scroll to bottom on mount and when messages change
   useEffect(() => {
     scrollToBottom(false);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [scrollToBottom]);
 
   useEffect(() => {
     scrollToBottom(true);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages]);
+  }, [messages, scrollToBottom]);
 
   // Track if user has manually scrolled - with virtual scrolling support
   const handleScroll = () => {
