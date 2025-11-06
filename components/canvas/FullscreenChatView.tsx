@@ -343,7 +343,7 @@ export default function FullscreenChatView({
       const timer = setTimeout(() => setAnnouncement(''), 1000);
       return () => clearTimeout(timer);
     }
-  }, [messages.length]);
+  }, [messages]);
 
   const handleSendMessage = async (message: string) => {
     // Reset scroll tracking when new message is sent

@@ -605,8 +605,7 @@ function ConversationCanvasInner({
     // Otherwise, start panning immediately
     setIsPanning(true);
     handleSmartPanningInternal(parentId, childId, currentNodes);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPanning]);
+  }, [isPanning, handleSmartPanningInternal]);
 
   // Notify parent of changes - strip out functions before saving
   // Use a ref to track the last saved state to avoid infinite loops

@@ -398,7 +398,8 @@ export default function CanvasManager() {
     } catch (error) {
       console.error('Failed to save canvas:', error);
     }
-  }, [user, currentCanvasId, canvases.length]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, currentCanvasId]);
 
   const handleSignOut = useCallback(async () => {
     console.log('handleSignOut called');
@@ -602,7 +603,7 @@ export default function CanvasManager() {
                   <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#00D5FF] text-[#1a1a1a] font-bold flex items-center justify-center">1</div>
                   <div>
                     <h4 className="text-[#ececec] font-semibold mb-1">Ask your question</h4>
-                    <p className="text-[#8e8e8e]">Start with any question or topic you're curious about</p>
+                    <p className="text-[#8e8e8e]">Start with any question or topic you&apos;re curious about</p>
                   </div>
                 </div>
                 <div className="flex gap-4 items-start">
