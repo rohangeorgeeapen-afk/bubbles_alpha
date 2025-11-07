@@ -521,7 +521,7 @@ export default function CanvasManager() {
                 <h1 
                   className="text-5xl md:text-7xl font-bold tracking-tight leading-none text-center" 
                   style={{ 
-                    fontFamily: '"Sk-Modernist", "Montserrat", sans-serif', 
+                    fontFamily: '"Montserrat", sans-serif', 
                     fontWeight: 700, 
                     backgroundImage: 'linear-gradient(to bottom, #ffffff 30%, #e0f2fe 70%)',
                     backgroundClip: 'text',
