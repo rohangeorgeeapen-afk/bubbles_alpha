@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, MessageSquare, Trash2, PanelLeftClose, PanelLeft, User, LogOut, Pencil, Check, X } from 'lucide-react';
+import { Plus, MessageSquare, Trash2, PanelLeftClose, PanelLeft, User, LogOut, Pencil, Check, X, Search } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 
@@ -40,6 +40,8 @@ export default function Sidebar({
 }: SidebarProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
 
   const handleStartEdit = (canvas: Canvas, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -60,6 +62,19 @@ export default function Sidebar({
     setEditingName('');
   };
 
+  const handleToggleSearch = () => {
+    setIsSearching(!isSearching);
+    if (isSearching) {
+      setSearchQuery('');
+    }
+  };
+
+  const filteredCanvases = searchQuery.trim()
+    ? canvases.filter((canvas) =>
+        canvas.name.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : canvases;
+
   return (
     <>
       {/* Sidebar */}
@@ -68,10 +83,30 @@ export default function Sidebar({
           isOpen ? 'w-64' : 'w-0'
         } overflow-hidden`}
       >
-        {/* Header with toggle button */}
+        {/* Header with logo and toggle button */}
         <div className="p-3 flex-shrink-0">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-8"></div>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-10">
+              <img 
+                src="/logo.png" 
+                alt="Bubbles Logo" 
+                className="w-8 h-8 object-contain"
+              />
+              <h1 
+                className="text-xl font-bold tracking-tight" 
+                style={{ 
+                  fontFamily: '"Sk-Modernist", "Montserrat", sans-serif', 
+                  fontWeight: 700, 
+                  backgroundImage: 'linear-gradient(to bottom, #ffffff 30%, #e0f2fe 70%)',
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  color: 'transparent',
+                  WebkitTextFillColor: 'transparent'
+                }}
+              >
+                bubbles
+              </h1>
+            </div>
             <Button
               onClick={onToggle}
               className="bg-transparent hover:bg-[#212121] text-[#ececec] rounded-lg p-2 border-0 flex-shrink-0"
@@ -80,33 +115,70 @@ export default function Sidebar({
               <PanelLeftClose className="w-5 h-5" />
             </Button>
           </div>
-          <button
-            onClick={onNewCanvas}
-            className="w-full bg-[#2a2a2a] text-[#ececec] rounded-lg font-normal text-sm border border-[#4a4a4a] h-11 whitespace-nowrap overflow-hidden shadow-md transition-all duration-200 flex items-center justify-center hover:border-[#00D5FF]/50 hover:shadow-lg hover:shadow-[#00D5FF]/30 hover:-translate-y-0.5 relative"
-            style={{
-              background: 'rgba(42, 42, 42, 0.8)',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(96, 165, 250, 0.2))';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(42, 42, 42, 0.8)';
-            }}
-          >
-            <Plus className="w-4 h-4 absolute left-4 text-[#00D5FF]" strokeWidth={2} />
-            <span className="truncate">New canvas</span>
-          </button>
+          {isSearching ? (
+            <div className="flex gap-2 items-center">
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search canvases..."
+                className="flex-1 h-11 bg-[#2a2a2a] border-[#4a4a4a] text-[#ececec] placeholder:text-[#6e6e6e] focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-[#00D5FF]/50"
+                autoFocus
+              />
+              <button
+                onClick={handleToggleSearch}
+                className="flex-shrink-0 bg-[#2a2a2a] text-[#ececec] rounded-lg border border-[#4a4a4a] h-11 w-11 shadow-md transition-all duration-200 flex items-center justify-center hover:border-[#ef4444]/50 hover:shadow-lg hover:shadow-[#ef4444]/30"
+                title="Close search"
+              >
+                <X className="w-4 h-4 text-[#b4b4b4]" strokeWidth={2} />
+              </button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <button
+                onClick={onNewCanvas}
+                className="flex-1 bg-[#2a2a2a] text-[#ececec] rounded-lg font-normal text-sm border border-[#4a4a4a] h-11 whitespace-nowrap overflow-hidden shadow-md transition-all duration-200 flex items-center hover:border-[#00D5FF]/50 hover:shadow-lg hover:shadow-[#00D5FF]/30 hover:-translate-y-0.5 relative pl-4"
+                style={{
+                  background: 'rgba(42, 42, 42, 0.8)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(96, 165, 250, 0.2))';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(42, 42, 42, 0.8)';
+                }}
+              >
+                <Plus className="w-4 h-4 text-[#00D5FF] mr-2" strokeWidth={2} />
+                <span className="truncate">New canvas</span>
+              </button>
+              <button
+                onClick={handleToggleSearch}
+                className="flex-shrink-0 bg-[#2a2a2a] text-[#ececec] rounded-lg border border-[#4a4a4a] h-11 w-11 shadow-md transition-all duration-200 flex items-center justify-center hover:border-[#00D5FF]/50 hover:shadow-lg hover:shadow-[#00D5FF]/30 hover:-translate-y-0.5"
+                style={{
+                  background: 'rgba(42, 42, 42, 0.8)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(96, 165, 250, 0.2))';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(42, 42, 42, 0.8)';
+                }}
+                title="Search chats"
+              >
+                <Search className="w-4 h-4 text-[#00D5FF]" strokeWidth={2} />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Canvas List */}
         <ScrollArea className="flex-1 px-2">
           <div className="space-y-0">
-            {canvases.length === 0 ? (
+            {filteredCanvases.length === 0 ? (
               <div className="text-center py-8 text-[#b4b4b4] text-sm px-4">
-                No canvases yet
+                {searchQuery ? 'No canvases found' : 'No canvases yet'}
               </div>
             ) : (
-              canvases.map((canvas) => (
+              filteredCanvases.map((canvas) => (
                 <div
                   key={canvas.id}
                   className={`group relative rounded-lg transition-colors ${
