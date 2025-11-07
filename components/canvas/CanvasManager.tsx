@@ -4,6 +4,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import ConversationCanvas from './ConversationCanvas';
 import Sidebar from '@/components/layout/Sidebar';
 import AuthModal from '@/components/auth/AuthModal';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Node, Edge } from '@xyflow/react';
 import { useAuth } from '@/lib/contexts/auth-context';
 import { supabase } from '@/lib/supabase-client';
@@ -23,12 +25,33 @@ export default function CanvasManager() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [hasInitialized, setHasInitialized] = useState(false);
-  const [showScrollIndicator, setShowScrollIndicator] = useState(true);
+  const [showScrollIndicator, setShowScrollIndicator] = useState(false);
+  const [showMobileWarning, setShowMobileWarning] = useState(false);
   const { user, signOut, loading: authLoading } = useAuth();
+
+  // Check for mobile and show warning
+  useEffect(() => {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
+    const hasSeenWarning = localStorage.getItem('mobile-warning-dismissed');
+    
+    if (isMobile && !hasSeenWarning) {
+      setShowMobileWarning(true);
+    }
+  }, []);
+
+  const handleDismissMobileWarning = (neverShowAgain: boolean) => {
+    if (neverShowAgain) {
+      localStorage.setItem('mobile-warning-dismissed', 'true');
+    }
+    setShowMobileWarning(false);
+  };
 
   // Handle scroll to hide indicator (only for landing page)
   useEffect(() => {
     if (user) return; // Only run on landing page
+
+    // Set initial state on mount (client-only)
+    setShowScrollIndicator(true);
 
     const handleScroll = () => {
       if (window.scrollY > 100) {
@@ -517,20 +540,25 @@ export default function CanvasManager() {
                   />
                 </div>
                 
-                <h1 
-                  className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight leading-none text-center" 
-                  style={{ 
-                    fontFamily: '"Montserrat", sans-serif', 
-                    fontWeight: 700, 
-                    backgroundImage: 'linear-gradient(to bottom, #ffffff 30%, #e0f2fe 70%)',
-                    backgroundClip: 'text',
-                    WebkitBackgroundClip: 'text',
-                    color: 'transparent',
-                    WebkitTextFillColor: 'transparent'
-                  }}
-                >
-                  bubbles
-                </h1>
+                <div className="flex items-center justify-center gap-3">
+                  <h1 
+                    className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight leading-none text-center" 
+                    style={{ 
+                      fontFamily: '"Montserrat", sans-serif', 
+                      fontWeight: 700, 
+                      backgroundImage: 'linear-gradient(to bottom, #ffffff 30%, #e0f2fe 70%)',
+                      backgroundClip: 'text',
+                      WebkitBackgroundClip: 'text',
+                      color: 'transparent',
+                      WebkitTextFillColor: 'transparent'
+                    }}
+                  >
+                    bubbles
+                  </h1>
+                  <span className="text-xs sm:text-sm font-semibold px-2 py-1 bg-[#00D5FF]/20 text-[#00D5FF] rounded border border-[#00D5FF]/30">
+                    BETA
+                  </span>
+                </div>
               </div>
               <p className="text-[#b4b4b4] text-base sm:text-lg md:text-xl mb-8 max-w-2xl mx-auto leading-relaxed text-center px-2">
                 Explore every question without losing your train of thought.
@@ -746,7 +774,7 @@ export default function CanvasManager() {
       />
 
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'md:ml-64 ml-0' : 'ml-0'}`}>
-        {hasInitialized && (
+        {hasInitialized && typeof window !== 'undefined' && (
           <ConversationCanvas
             key={currentCanvasId || 'empty-canvas'}
             initialNodes={currentCanvas?.nodes || []}
@@ -758,6 +786,41 @@ export default function CanvasManager() {
       </div>
 
       <AuthModal open={authModalOpen && !user} onOpenChange={setAuthModalOpen} />
+
+      {/* Mobile Warning Dialog */}
+      <Dialog open={showMobileWarning} onOpenChange={(open) => !open && handleDismissMobileWarning(false)}>
+        <DialogContent className="bg-[#2f2f2f] border border-[#4d4d4d] rounded-2xl max-w-md [&>button]:hidden">
+          <DialogHeader>
+            <DialogTitle className="text-[#ececec] font-semibold text-lg flex items-center gap-2 pr-8">
+              <span className="text-2xl">📱</span>
+              Mobile Experience Notice
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <p className="text-[#b4b4b4] text-sm leading-relaxed">
+              This app hasn&apos;t been fully optimized for mobile devices yet. You may experience bugs or layout issues.
+            </p>
+            <p className="text-[#8e8e8e] text-xs">
+              For the best experience, we recommend using a desktop or tablet.
+            </p>
+            <div className="flex flex-col gap-2 pt-2">
+              <Button 
+                onClick={() => handleDismissMobileWarning(true)} 
+                className="w-full bg-[#ececec] hover:bg-[#d4d4d4] text-[#0d0d0d] rounded-lg font-medium"
+              >
+                Got it, don&apos;t show again
+              </Button>
+              <Button 
+                onClick={() => handleDismissMobileWarning(false)} 
+                variant="outline"
+                className="w-full border-[#4d4d4d] text-[#ececec] hover:bg-[#212121] rounded-lg"
+              >
+                Remind me later
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

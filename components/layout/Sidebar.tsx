@@ -85,27 +85,32 @@ export default function Sidebar({
       >
         {/* Header with logo and toggle button */}
         <div className="p-3 sm:p-4 flex-shrink-0">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3 sm:gap-10">
+          <div className="flex items-center justify-between mb-4 gap-2">
+            <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
               <img 
                 src="/logo.png" 
                 alt="Bubbles Logo" 
-                className="w-7 h-7 sm:w-8 sm:h-8 object-contain"
+                className="w-7 h-7 sm:w-8 sm:h-8 object-contain flex-shrink-0"
               />
-              <h1 
-                className="text-lg sm:text-xl font-bold tracking-tight" 
-                style={{ 
-                  fontFamily: '"Montserrat", sans-serif', 
-                  fontWeight: 700, 
-                  backgroundImage: 'linear-gradient(to bottom, #ffffff 30%, #e0f2fe 70%)',
-                  backgroundClip: 'text',
-                  WebkitBackgroundClip: 'text',
-                  color: 'transparent',
-                  WebkitTextFillColor: 'transparent'
-                }}
-              >
-                bubbles
-              </h1>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <h1 
+                  className="text-lg sm:text-xl font-bold tracking-tight" 
+                  style={{ 
+                    fontFamily: '"Montserrat", sans-serif', 
+                    fontWeight: 700, 
+                    backgroundImage: 'linear-gradient(to bottom, #ffffff 30%, #e0f2fe 70%)',
+                    backgroundClip: 'text',
+                    WebkitBackgroundClip: 'text',
+                    color: 'transparent',
+                    WebkitTextFillColor: 'transparent'
+                  }}
+                >
+                  bubbles
+                </h1>
+                <span className="text-[9px] font-semibold px-1.5 py-0.5 bg-[#00D5FF]/20 text-[#00D5FF] rounded border border-[#00D5FF]/30 flex-shrink-0">
+                  BETA
+                </span>
+              </div>
             </div>
             <Button
               onClick={onToggle}

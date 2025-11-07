@@ -1309,8 +1309,8 @@ function ConversationCanvasInner({
           onMove={onMove}
           nodeTypes={nodeTypes}
           fitView
-          fitViewOptions={{ padding: 0.3, maxZoom: 1, minZoom: 0.5 }}
-          minZoom={0.1}
+          fitViewOptions={{ padding: 0.3, maxZoom: 1, minZoom: 0.01 }}
+          minZoom={0.01}
           maxZoom={2}
           noWheelClassName="nowheel"
           noDragClassName="nodrag"
