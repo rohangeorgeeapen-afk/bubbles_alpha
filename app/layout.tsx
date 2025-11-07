@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { AuthProvider } from '@/lib/contexts/auth-context';
 
 export const metadata: Metadata = {
-  title: 'Bubbles',
+  title: 'bubbles',
   description: 'Graph-based AI conversation interface',
   icons: {
     icon: [

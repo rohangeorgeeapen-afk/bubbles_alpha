@@ -7,7 +7,6 @@ import AuthModal from '@/components/auth/AuthModal';
 import { Node, Edge } from '@xyflow/react';
 import { useAuth } from '@/lib/contexts/auth-context';
 import { supabase } from '@/lib/supabase-client';
-import { Button } from '@/components/ui/button';
 
 interface CanvasData {
   id: string;

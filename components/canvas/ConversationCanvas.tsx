@@ -1239,6 +1239,7 @@ function ConversationCanvasInner({
 
   return (
     <div className="w-full h-screen relative">
+
       {/* Render fullscreen chat view with smooth fade + scale animation */}
       {(fullscreenState.isFullscreen || fullscreenState.isTransitioning) && (
         <div
@@ -1288,6 +1289,7 @@ function ConversationCanvasInner({
         </div>
       )}
       
+
       {/* Network status indicator */}
       {!isOnline && fullscreenState.isFullscreen && (
         <div className="absolute top-20 left-1/2 -translate-x-1/2 z-50 bg-red-900/90 border border-red-700 rounded-lg px-4 py-2 shadow-lg">
@@ -1295,6 +1297,7 @@ function ConversationCanvasInner({
         </div>
       )}
       
+
       {/* Render canvas when not in fullscreen mode (including during exit transition setup) */}
       {!fullscreenState.isFullscreen && (
         <ReactFlow
@@ -1381,6 +1384,7 @@ function ConversationCanvasInner({
                 </svg>
               </button>
             </div>
+
             <MiniMap 
               className="!bg-[#1a1a1a] !border-[#3a3a3a] !rounded-2xl !shadow-2xl !overflow-hidden backdrop-blur-sm" 
               maskColor="rgba(13, 13, 13, 0.85)"
@@ -1393,6 +1397,7 @@ function ConversationCanvasInner({
           </>
         )}
         
+
         {/* ChatGPT-style centered input when no nodes */}
         {nodes.length === 0 && (
           <div className="absolute inset-0 flex flex-col items-center justify-center z-10 px-4 sm:px-6">
@@ -1469,6 +1474,7 @@ function ConversationCanvasInner({
         </DialogContent>
       </Dialog>
 
+
       {/* Exit confirmation dialog */}
       <Dialog open={showExitConfirmation} onOpenChange={setShowExitConfirmation}>
         <DialogContent className="bg-[#2f2f2f] border border-[#4d4d4d] rounded-2xl">
@@ -1500,6 +1506,7 @@ function ConversationCanvasInner({
           </div>
         </DialogContent>
       </Dialog>
+
 
       {/* Undo Delete Toast - positioned relative to canvas, not entire screen */}
       <div 
