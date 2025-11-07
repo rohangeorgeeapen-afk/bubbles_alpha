@@ -78,6 +78,24 @@ function ConversationCanvasInner({
   const nodeIdCounter = useRef(initialNodes.length);
   const hasInitialized = useRef(false);
   
+  // Welcome messages that rotate
+  const welcomeMessages = [
+    "What's on your mind?",
+    "Let's explore something new",
+    "Start a conversation",
+    "What would you like to know?",
+    "Ask me anything",
+    "Let's dive into a topic",
+    "What are you curious about?",
+    "Begin your exploration",
+    "What's your question?",
+    "Let's get started",
+  ];
+  
+  const [welcomeMessage] = useState(() => {
+    return welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];
+  });
+  
   // Fullscreen state management
   const [fullscreenState, setFullscreenState] = useState<FullscreenState>({
     isFullscreen: false,
@@ -1398,17 +1416,18 @@ function ConversationCanvasInner({
         )}
         
 
-        {/* ChatGPT-style centered input when no nodes */}
+        {/* Empty canvas state */}
         {nodes.length === 0 && (
           <div className="absolute inset-0 flex flex-col items-center justify-center z-10 px-4 sm:px-6">
-            <div className="text-center mb-6 sm:mb-8">
-              <h1 className="text-lg sm:text-xl md:text-2xl font-normal text-[#ececec] mb-2 px-2">What&apos;s on your mind today?</h1>
+            <div className="text-center mb-8 sm:mb-10">
+              <h1 className="text-xl sm:text-2xl font-semibold text-[#ececec] mb-2">{welcomeMessage}</h1>
+              <p className="text-sm sm:text-base text-[#8e8e8e] max-w-2xl mx-auto whitespace-nowrap">Ask multiple follow-ups on any response without losing your thread</p>
             </div>
-            <div className="w-full max-w-3xl">
+            <div className="w-full max-w-2xl">
               <div className="relative">
                 <Input
                   type="text"
-                  placeholder="Ask anything"
+                  placeholder="Type your question..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   onKeyDown={(e) => {
@@ -1417,21 +1436,21 @@ function ConversationCanvasInner({
                     }
                   }}
                   disabled={isLoading}
-                  className="w-full h-14 sm:h-14 md:h-16 bg-[#2f2f2f] border border-[#565656] text-[#ececec] placeholder:text-[#8e8e8e] rounded-3xl px-5 sm:px-5 md:px-6 pr-14 sm:pr-14 md:pr-16 focus-visible:ring-0 focus-visible:ring-offset-0 text-base sm:text-base md:text-lg touch-manipulation"
+                  className="w-full h-12 sm:h-14 bg-[#2a2a2a] border border-[#4a4a4a] text-[#ececec] placeholder:text-[#6e6e6e] rounded-xl px-4 sm:px-5 pr-12 sm:pr-14 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-[#00D5FF]/50 transition-colors text-sm sm:text-base touch-manipulation"
                   style={{ fontSize: '16px' }}
                 />
                 {isLoading ? (
-                  <div className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2">
-                    <div className="w-5 h-5 border-2 border-[#565656] border-t-[#ececec] rounded-full animate-spin"></div>
+                  <div className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2">
+                    <div className="w-5 h-5 border-2 border-[#4a4a4a] border-t-[#00D5FF] rounded-full animate-spin"></div>
                   </div>
                 ) : (
                   <Button
                     onClick={handleStartConversation}
                     disabled={!searchTerm.trim()}
-                    className="absolute right-2 sm:right-2 md:right-3 top-1/2 -translate-y-1/2 h-10 w-10 sm:h-10 sm:w-10 md:h-11 md:w-11 p-0 rounded-full bg-[#ececec] hover:bg-[#d4d4d4] text-[#0d0d0d] disabled:opacity-30 disabled:cursor-not-allowed transition-opacity flex items-center justify-center touch-manipulation"
+                    className="absolute right-2 sm:right-2.5 top-1/2 -translate-y-1/2 h-8 w-8 sm:h-9 sm:w-9 p-0 rounded-lg bg-[#00D5FF] hover:bg-[#00B8E6] text-[#0d0d0d] disabled:opacity-30 disabled:bg-[#4a4a4a] disabled:cursor-not-allowed transition-all flex items-center justify-center touch-manipulation"
                     aria-label="Send message"
                   >
-                    <ArrowUp className="w-5 h-5 sm:w-5 sm:h-5" strokeWidth={2} />
+                    <ArrowUp className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
                   </Button>
                 )}
               </div>
