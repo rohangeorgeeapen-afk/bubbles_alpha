@@ -80,20 +80,20 @@ export default function Sidebar({
       {/* Sidebar */}
       <div
         className={`fixed top-0 left-0 h-full bg-[#171717] transition-all duration-300 z-40 flex flex-col ${
-          isOpen ? 'w-64' : 'w-0'
+          isOpen ? 'w-full sm:w-80 md:w-64' : 'w-0'
         } overflow-hidden`}
       >
         {/* Header with logo and toggle button */}
-        <div className="p-3 flex-shrink-0">
+        <div className="p-3 sm:p-4 flex-shrink-0">
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-10">
+            <div className="flex items-center gap-3 sm:gap-10">
               <img 
                 src="/logo.png" 
                 alt="Bubbles Logo" 
-                className="w-8 h-8 object-contain"
+                className="w-7 h-7 sm:w-8 sm:h-8 object-contain"
               />
               <h1 
-                className="text-xl font-bold tracking-tight" 
+                className="text-lg sm:text-xl font-bold tracking-tight" 
                 style={{ 
                   fontFamily: '"Montserrat", sans-serif', 
                   fontWeight: 700, 
@@ -109,10 +109,10 @@ export default function Sidebar({
             </div>
             <Button
               onClick={onToggle}
-              className="bg-transparent hover:bg-[#212121] text-[#ececec] rounded-lg p-2 border-0 flex-shrink-0"
+              className="bg-transparent hover:bg-[#212121] text-[#ececec] rounded-lg p-2 border-0 flex-shrink-0 touch-manipulation"
               size="sm"
             >
-              <PanelLeftClose className="w-5 h-5" />
+              <PanelLeftClose className="w-5 h-5 sm:w-6 sm:h-6" />
             </Button>
           </div>
           {isSearching ? (
@@ -136,7 +136,7 @@ export default function Sidebar({
             <div className="flex gap-2">
               <button
                 onClick={onNewCanvas}
-                className="flex-1 bg-[#2a2a2a] text-[#ececec] rounded-lg font-normal text-sm border border-[#4a4a4a] h-11 whitespace-nowrap overflow-hidden shadow-md transition-all duration-200 flex items-center hover:border-[#00D5FF]/50 hover:shadow-lg hover:shadow-[#00D5FF]/30 hover:-translate-y-0.5 relative pl-4"
+                className="flex-1 bg-[#2a2a2a] text-[#ececec] rounded-lg font-normal text-sm sm:text-base border border-[#4a4a4a] h-11 sm:h-12 whitespace-nowrap overflow-hidden shadow-md transition-all duration-200 flex items-center hover:border-[#00D5FF]/50 hover:shadow-lg hover:shadow-[#00D5FF]/30 hover:-translate-y-0.5 relative pl-4 touch-manipulation"
                 style={{
                   background: 'rgba(42, 42, 42, 0.8)',
                 }}
@@ -152,7 +152,7 @@ export default function Sidebar({
               </button>
               <button
                 onClick={handleToggleSearch}
-                className="flex-shrink-0 bg-[#2a2a2a] text-[#ececec] rounded-lg border border-[#4a4a4a] h-11 w-11 shadow-md transition-all duration-200 flex items-center justify-center hover:border-[#00D5FF]/50 hover:shadow-lg hover:shadow-[#00D5FF]/30 hover:-translate-y-0.5"
+                className="flex-shrink-0 bg-[#2a2a2a] text-[#ececec] rounded-lg border border-[#4a4a4a] h-11 w-11 sm:h-12 sm:w-12 shadow-md transition-all duration-200 flex items-center justify-center hover:border-[#00D5FF]/50 hover:shadow-lg hover:shadow-[#00D5FF]/30 hover:-translate-y-0.5 touch-manipulation"
                 style={{
                   background: 'rgba(42, 42, 42, 0.8)',
                 }}

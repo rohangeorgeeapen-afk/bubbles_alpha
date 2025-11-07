@@ -477,12 +477,12 @@ export default function CanvasManager() {
       <>
         <div className="min-h-screen bg-[#1a1a1a] overflow-y-auto">
           {/* Hero Section */}
-          <section className="max-w-6xl mx-auto px-6 md:px-8 pt-20 md:pt-32 pb-20 md:pb-24 border-b border-[#2a2a2a] relative">
+          <section className="max-w-6xl mx-auto px-4 sm:px-6 md:px-8 pt-16 sm:pt-20 md:pt-32 pb-20 md:pb-24 border-b border-[#2a2a2a] relative">
             <div className="mb-8 md:mb-12">
               <div className="flex flex-col items-center mb-8">
                 {/* Logo Image */}
                 <div 
-                  className="relative w-32 h-32 md:w-40 md:h-40 mb-4 cursor-pointer group transition-all duration-500"
+                  className="relative w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 mb-4 cursor-pointer group transition-all duration-500"
                   style={{
                     filter: 'drop-shadow(0 0 0 transparent)',
                     transition: 'filter 0.5s ease'
@@ -519,7 +519,7 @@ export default function CanvasManager() {
                 </div>
                 
                 <h1 
-                  className="text-5xl md:text-7xl font-bold tracking-tight leading-none text-center" 
+                  className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight leading-none text-center" 
                   style={{ 
                     fontFamily: '"Montserrat", sans-serif', 
                     fontWeight: 700, 
@@ -533,15 +533,15 @@ export default function CanvasManager() {
                   bubbles
                 </h1>
               </div>
-              <p className="text-[#b4b4b4] text-lg md:text-xl mb-8 max-w-2xl mx-auto leading-relaxed text-center">
+              <p className="text-[#b4b4b4] text-base sm:text-lg md:text-xl mb-8 max-w-2xl mx-auto leading-relaxed text-center px-2">
                 Explore every question without losing your train of thought.
                 <br />
-                <span className="text-[#8e8e8e]">Branch conversations naturally. Follow curiosity freely.</span>
+                <span className="text-[#8e8e8e] text-sm sm:text-base">Branch conversations naturally. Follow curiosity freely.</span>
               </p>
               <div className="flex justify-center">
               <button
                 onClick={() => setAuthModalOpen(true)}
-                className="group relative px-5 md:px-6 py-2 md:py-2.5 bg-white text-[#212121] text-sm md:text-base rounded-xl font-semibold overflow-hidden inline-flex items-center gap-2"
+                className="group relative px-6 sm:px-8 md:px-6 py-3 sm:py-3.5 md:py-2.5 bg-white text-[#212121] text-base sm:text-lg md:text-base rounded-xl font-semibold overflow-hidden inline-flex items-center gap-2 touch-manipulation"
                 style={{
                   transition: 'transform 0.3s cubic-bezier(0.34, 1.2, 0.64, 1), box-shadow 0.3s ease'
                 }}
@@ -613,16 +613,16 @@ export default function CanvasManager() {
           </section>
 
           {/* Features Section */}
-          <section className="max-w-6xl mx-auto px-6 md:px-8 py-16 md:py-24 border-b border-[#2a2a2a]">
-            <div className="grid md:grid-cols-3 gap-8 md:gap-12">
+          <section className="max-w-6xl mx-auto px-4 sm:px-6 md:px-8 py-12 sm:py-16 md:py-24 border-b border-[#2a2a2a]">
+            <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-8 sm:gap-10 md:gap-12">
               <div className="text-center group">
                 <img 
                   src="/icon-curiosity.png" 
                   alt="Follow Your Curiosity" 
                   className="w-16 h-16 md:w-20 md:h-20 mx-auto mb-6 object-contain transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6"
                 />
-                <h3 className="text-[#ececec] text-xl font-semibold mb-3">Follow Your Curiosity</h3>
-                <p className="text-[#8e8e8e] leading-relaxed">
+                <h3 className="text-[#ececec] text-lg sm:text-xl font-semibold mb-3">Follow Your Curiosity</h3>
+                <p className="text-[#8e8e8e] text-sm sm:text-base leading-relaxed">
                   Ask follow-up questions on any topic without derailing your main conversation
                 </p>
               </div>
@@ -633,8 +633,8 @@ export default function CanvasManager() {
                   alt="Stay Organized" 
                   className="w-16 h-16 md:w-20 md:h-20 mx-auto mb-6 object-contain transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6"
                 />
-                <h3 className="text-[#ececec] text-xl font-semibold mb-3">Stay Organized</h3>
-                <p className="text-[#8e8e8e] leading-relaxed">
+                <h3 className="text-[#ececec] text-lg sm:text-xl font-semibold mb-3">Stay Organized</h3>
+                <p className="text-[#8e8e8e] text-sm sm:text-base leading-relaxed">
                   See your entire conversation tree at a glance. Navigate between topics effortlessly
                 </p>
               </div>
@@ -645,8 +645,8 @@ export default function CanvasManager() {
                   alt="Keep Context" 
                   className="w-16 h-16 md:w-20 md:h-20 mx-auto mb-6 object-contain transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6"
                 />
-                <h3 className="text-[#ececec] text-xl font-semibold mb-3">Keep Context</h3>
-                <p className="text-[#8e8e8e] leading-relaxed">
+                <h3 className="text-[#ececec] text-lg sm:text-xl font-semibold mb-3">Keep Context</h3>
+                <p className="text-[#8e8e8e] text-sm sm:text-base leading-relaxed">
                   Each branch maintains its own context. Return to any conversation thread anytime
                 </p>
               </div>
@@ -654,39 +654,39 @@ export default function CanvasManager() {
           </section>
 
           {/* How It Works & CTA Section */}
-          <section className="max-w-6xl mx-auto px-6 md:px-8 py-16 md:py-24">
-            <div className="max-w-3xl mx-auto text-center mb-16">
-              <h2 className="text-[#ececec] text-3xl md:text-4xl font-bold mb-6">How It Works</h2>
-              <div className="space-y-6 text-left mb-12">
-                <div className="flex gap-4 items-start">
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#00D5FF] text-[#1a1a1a] font-bold flex items-center justify-center">1</div>
+          <section className="max-w-6xl mx-auto px-4 sm:px-6 md:px-8 py-12 sm:py-16 md:py-24">
+            <div className="max-w-3xl mx-auto text-center mb-12 sm:mb-16">
+              <h2 className="text-[#ececec] text-2xl sm:text-3xl md:text-4xl font-bold mb-6">How It Works</h2>
+              <div className="space-y-4 sm:space-y-6 text-left mb-8 sm:mb-12">
+                <div className="flex gap-3 sm:gap-4 items-start">
+                  <div className="flex-shrink-0 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#00D5FF] text-[#1a1a1a] font-bold flex items-center justify-center text-sm sm:text-base">1</div>
                   <div>
-                    <h4 className="text-[#ececec] font-semibold mb-1">Ask your question</h4>
-                    <p className="text-[#8e8e8e]">Start with any question or topic you&apos;re curious about</p>
+                    <h4 className="text-[#ececec] font-semibold mb-1 text-sm sm:text-base">Ask your question</h4>
+                    <p className="text-[#8e8e8e] text-sm sm:text-base">Start with any question or topic you&apos;re curious about</p>
                   </div>
                 </div>
-                <div className="flex gap-4 items-start">
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#00D5FF] text-[#1a1a1a] font-bold flex items-center justify-center">2</div>
+                <div className="flex gap-3 sm:gap-4 items-start">
+                  <div className="flex-shrink-0 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#00D5FF] text-[#1a1a1a] font-bold flex items-center justify-center text-sm sm:text-base">2</div>
                   <div>
-                    <h4 className="text-[#ececec] font-semibold mb-1">Branch off naturally</h4>
-                    <p className="text-[#8e8e8e]">When something sparks your curiosity, create a new branch to explore it</p>
+                    <h4 className="text-[#ececec] font-semibold mb-1 text-sm sm:text-base">Branch off naturally</h4>
+                    <p className="text-[#8e8e8e] text-sm sm:text-base">When something sparks your curiosity, create a new branch to explore it</p>
                   </div>
                 </div>
-                <div className="flex gap-4 items-start">
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#00D5FF] text-[#1a1a1a] font-bold flex items-center justify-center">3</div>
+                <div className="flex gap-3 sm:gap-4 items-start">
+                  <div className="flex-shrink-0 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#00D5FF] text-[#1a1a1a] font-bold flex items-center justify-center text-sm sm:text-base">3</div>
                   <div>
-                    <h4 className="text-[#ececec] font-semibold mb-1">Navigate your knowledge tree</h4>
-                    <p className="text-[#8e8e8e]">Switch between branches, zoom in on details, or step back to see the big picture</p>
+                    <h4 className="text-[#ececec] font-semibold mb-1 text-sm sm:text-base">Navigate your knowledge tree</h4>
+                    <p className="text-[#8e8e8e] text-sm sm:text-base">Switch between branches, zoom in on details, or step back to see the big picture</p>
                   </div>
                 </div>
               </div>
             </div>
 
             <div className="text-center">
-              <p className="text-[#b4b4b4] text-lg mb-6">Ready to think differently?</p>
+              <p className="text-[#b4b4b4] text-base sm:text-lg mb-6">Ready to think differently?</p>
               <button
                 onClick={() => setAuthModalOpen(true)}
-                className="group relative px-10 md:px-12 py-4 md:py-5 bg-white text-[#212121] text-base md:text-lg rounded-xl font-semibold overflow-hidden inline-flex items-center gap-2"
+                className="group relative px-8 sm:px-10 md:px-12 py-3.5 sm:py-4 md:py-5 bg-white text-[#212121] text-base sm:text-lg rounded-xl font-semibold overflow-hidden inline-flex items-center gap-2 touch-manipulation"
                 style={{
                   transition: 'transform 0.3s cubic-bezier(0.34, 1.2, 0.64, 1), box-shadow 0.3s ease'
                 }}
@@ -718,7 +718,7 @@ export default function CanvasManager() {
                 </span>
                 <div className="absolute inset-0 bg-gradient-to-r from-white to-gray-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               </button>
-              <p className="text-[#6e6e6e] text-sm mt-4">Free to use • No credit card required</p>
+              <p className="text-[#6e6e6e] text-xs sm:text-sm mt-4">Free to use • No credit card required</p>
             </div>
           </section>
         </div>

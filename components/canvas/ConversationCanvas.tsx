@@ -1395,9 +1395,9 @@ function ConversationCanvasInner({
         
         {/* ChatGPT-style centered input when no nodes */}
         {nodes.length === 0 && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center z-10 px-4">
-            <div className="text-center mb-6 md:mb-8">
-              <h1 className="text-xl md:text-2xl font-normal text-[#ececec] mb-2">What&apos;s on your mind today?</h1>
+          <div className="absolute inset-0 flex flex-col items-center justify-center z-10 px-4 sm:px-6">
+            <div className="text-center mb-6 sm:mb-8">
+              <h1 className="text-lg sm:text-xl md:text-2xl font-normal text-[#ececec] mb-2 px-2">What&apos;s on your mind today?</h1>
             </div>
             <div className="w-full max-w-3xl">
               <div className="relative">
@@ -1412,7 +1412,7 @@ function ConversationCanvasInner({
                     }
                   }}
                   disabled={isLoading}
-                  className="w-full h-12 md:h-14 bg-[#2f2f2f] border border-[#565656] text-[#ececec] placeholder:text-[#8e8e8e] rounded-3xl px-4 md:px-5 pr-12 md:pr-14 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm md:text-base"
+                  className="w-full h-14 sm:h-14 md:h-16 bg-[#2f2f2f] border border-[#565656] text-[#ececec] placeholder:text-[#8e8e8e] rounded-3xl px-5 sm:px-5 md:px-6 pr-14 sm:pr-14 md:pr-16 focus-visible:ring-0 focus-visible:ring-offset-0 text-base sm:text-base md:text-lg touch-manipulation"
                   style={{ fontSize: '16px' }}
                 />
                 {isLoading ? (
@@ -1423,10 +1423,10 @@ function ConversationCanvasInner({
                   <Button
                     onClick={handleStartConversation}
                     disabled={!searchTerm.trim()}
-                    className="absolute right-1.5 md:right-2 top-1/2 -translate-y-1/2 h-9 w-9 md:h-10 md:w-10 p-0 rounded-full bg-[#ececec] hover:bg-[#d4d4d4] text-[#0d0d0d] disabled:opacity-30 disabled:cursor-not-allowed transition-opacity flex items-center justify-center"
+                    className="absolute right-2 sm:right-2 md:right-3 top-1/2 -translate-y-1/2 h-10 w-10 sm:h-10 sm:w-10 md:h-11 md:w-11 p-0 rounded-full bg-[#ececec] hover:bg-[#d4d4d4] text-[#0d0d0d] disabled:opacity-30 disabled:cursor-not-allowed transition-opacity flex items-center justify-center touch-manipulation"
                     aria-label="Send message"
                   >
-                    <ArrowUp className="w-4 h-4" strokeWidth={2} />
+                    <ArrowUp className="w-5 h-5 sm:w-5 sm:h-5" strokeWidth={2} />
                   </Button>
                 )}
               </div>
