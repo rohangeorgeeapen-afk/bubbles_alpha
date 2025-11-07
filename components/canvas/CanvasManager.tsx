@@ -24,7 +24,31 @@ export default function CanvasManager() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [hasInitialized, setHasInitialized] = useState(false);
+  const [showScrollIndicator, setShowScrollIndicator] = useState(true);
   const { user, signOut, loading: authLoading } = useAuth();
+
+  // Handle scroll to hide indicator (only for landing page)
+  useEffect(() => {
+    if (user) return; // Only run on landing page
+
+    const handleScroll = () => {
+      if (window.scrollY > 100) {
+        setShowScrollIndicator(false);
+      } else {
+        setShowScrollIndicator(true);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [user]);
+
+  const scrollToFeatures = () => {
+    window.scrollTo({
+      top: window.innerHeight * 0.8,
+      behavior: 'smooth'
+    });
+  };
 
   const loadCanvases = useCallback(async (isInitialLoad = false) => {
     if (!user) {
@@ -453,8 +477,8 @@ export default function CanvasManager() {
       <>
         <div className="min-h-screen bg-[#1a1a1a] overflow-y-auto">
           {/* Hero Section */}
-          <section className="max-w-6xl mx-auto px-6 md:px-8 pt-20 md:pt-32 pb-16 md:pb-24 border-b border-[#2a2a2a]">
-            <div className="mb-16 md:mb-20">
+          <section className="max-w-6xl mx-auto px-6 md:px-8 pt-20 md:pt-32 pb-20 md:pb-24 border-b border-[#2a2a2a] relative">
+            <div className="mb-8 md:mb-12">
               <div className="flex flex-col items-center mb-8">
                 {/* Logo Image */}
                 <div 
@@ -550,6 +574,41 @@ export default function CanvasManager() {
                 <div className="absolute inset-0 bg-gradient-to-r from-white to-gray-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               </button>
               </div>
+            </div>
+            
+            {/* Scroll Indicator - Minimalistic dots */}
+            <div className="flex justify-center w-full absolute bottom-8 left-0 right-0">
+              <button
+                onClick={scrollToFeatures}
+                className={`flex flex-col items-center gap-2 cursor-pointer group transition-all duration-500 ${
+                  showScrollIndicator ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'
+                }`}
+                aria-label="Scroll to features"
+              >
+              <div className="flex flex-col gap-1.5 group-hover:gap-2 transition-all duration-300">
+                <div 
+                  className="w-1 h-1 rounded-full bg-[#00D5FF] group-hover:w-1.5 group-hover:h-1.5 transition-all duration-300"
+                  style={{
+                    animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    animationDelay: '0s'
+                  }}
+                ></div>
+                <div 
+                  className="w-1 h-1 rounded-full bg-[#00D5FF] group-hover:w-1.5 group-hover:h-1.5 transition-all duration-300"
+                  style={{
+                    animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    animationDelay: '0.3s'
+                  }}
+                ></div>
+                <div 
+                  className="w-1 h-1 rounded-full bg-[#00D5FF] group-hover:w-1.5 group-hover:h-1.5 transition-all duration-300"
+                  style={{
+                    animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    animationDelay: '0.6s'
+                  }}
+                ></div>
+              </div>
+              </button>
             </div>
           </section>
 
