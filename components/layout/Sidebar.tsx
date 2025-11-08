@@ -56,7 +56,9 @@ export default function Sidebar({
 
   const handleSaveEdit = (id: string) => {
     if (editingName.trim()) {
-      onRenameCanvas(id, editingName.trim());
+      // Limit canvas name to 30 characters
+      const trimmedName = editingName.trim().substring(0, 30);
+      onRenameCanvas(id, trimmedName);
     }
     setEditingId(null);
     setEditingName('');
@@ -271,7 +273,7 @@ export default function Sidebar({
                           <MessageSquare className={`w-4 h-4 mt-0.5 flex-shrink-0 ${currentCanvasId === canvas.id ? 'text-[#00D5FF]' : 'text-[#b4b4b4]'}`} strokeWidth={2} />
                           <div className="flex-1 min-w-0">
                             <div className="text-sm text-[#ececec] truncate">
-                              {canvas.name}
+                              {canvas.name.length > 15 ? canvas.name.substring(0, 15) + '...' : canvas.name}
                             </div>
                             <div className="text-xs text-[#b4b4b4] mt-1">
                               {canvas.nodeCount} nodes
