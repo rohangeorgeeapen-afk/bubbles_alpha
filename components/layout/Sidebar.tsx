@@ -2,9 +2,10 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, MessageSquare, Trash2, PanelLeftClose, PanelLeft, User, LogOut, Pencil, Check, X, Search } from 'lucide-react';
+import { Plus, MessageSquare, Trash2, PanelLeftClose, PanelLeft, User, LogOut, Pencil, Check, X, Search, AlertTriangle } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 interface Canvas {
   id: string;
@@ -43,6 +44,9 @@ export default function Sidebar({
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [logoHovered, setLogoHovered] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [canvasToDelete, setCanvasToDelete] = useState<Canvas | null>(null);
+  const [deletingCanvasId, setDeletingCanvasId] = useState<string | null>(null);
 
   const handleStartEdit = (canvas: Canvas, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -209,7 +213,11 @@ export default function Sidebar({
               filteredCanvases.map((canvas) => (
                 <div
                   key={canvas.id}
-                  className={`group relative rounded-lg transition-colors ${
+                  className={`group relative rounded-lg transition-all duration-300 ${
+                    deletingCanvasId === canvas.id
+                      ? 'opacity-0 scale-95 -translate-x-4'
+                      : 'opacity-100 scale-100 translate-x-0'
+                  } ${
                     currentCanvasId === canvas.id
                       ? 'bg-gradient-to-r from-[#00D5FF]/10 to-[#00D5FF]/10 border-l-2 border-[#00D5FF]'
                       : 'hover:bg-[#212121]'
@@ -282,7 +290,8 @@ export default function Sidebar({
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            onDeleteCanvas(canvas.id);
+                            setCanvasToDelete(canvas);
+                            setDeleteDialogOpen(true);
                           }}
                           className="p-1.5 rounded hover:bg-[#2f2f2f] transition-colors"
                           title="Delete"
@@ -343,6 +352,53 @@ export default function Sidebar({
           aria-label="Close sidebar"
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="bg-[#2a2a2a] border border-[#4a4a4a] text-[#ececec] max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-[#ececec]">
+              <AlertTriangle className="w-5 h-5 text-[#ef4444]" />
+              Delete Canvas
+            </DialogTitle>
+            <DialogDescription className="text-[#b4b4b4] pt-2">
+              Are you sure you want to delete <span className="text-[#ececec] font-medium">&quot;{canvasToDelete?.name}&quot;</span>?
+              <br />
+              <span className="text-[#8e8e8e] text-sm">This action cannot be undone. All nodes and conversations will be permanently deleted.</span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeleteDialogOpen(false);
+                setCanvasToDelete(null);
+              }}
+              className="bg-transparent border-[#4a4a4a] text-[#ececec] hover:bg-[#3a3a3a] hover:text-[#ececec]"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (canvasToDelete) {
+                  setDeletingCanvasId(canvasToDelete.id);
+                  setDeleteDialogOpen(false);
+                  
+                  // Wait for animation to complete before actually deleting
+                  setTimeout(() => {
+                    onDeleteCanvas(canvasToDelete.id);
+                    setDeletingCanvasId(null);
+                    setCanvasToDelete(null);
+                  }, 300);
+                }
+              }}
+              className="bg-[#ef4444] text-white hover:bg-[#dc2626]"
+            >
+              Delete Canvas
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
