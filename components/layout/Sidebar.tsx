@@ -42,6 +42,7 @@ export default function Sidebar({
   const [editingName, setEditingName] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const [logoHovered, setLogoHovered] = useState(false);
 
   const handleStartEdit = (canvas: Canvas, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -87,11 +88,33 @@ export default function Sidebar({
         <div className="p-3 sm:p-4 flex-shrink-0">
           <div className="flex items-center justify-between mb-4 gap-2">
             <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-              <img 
-                src="/logo.png" 
-                alt="Bubbles Logo" 
-                className="w-7 h-7 sm:w-8 sm:h-8 object-contain flex-shrink-0"
-              />
+              <div 
+                className="relative w-7 h-7 sm:w-8 sm:h-8 cursor-pointer group transition-all duration-500 flex-shrink-0"
+                style={{
+                  filter: logoHovered ? 'drop-shadow(0 12px 40px rgba(0, 213, 255, 0.5))' : 'drop-shadow(0 0 0 transparent)',
+                  transition: 'filter 0.5s ease'
+                }}
+                onMouseEnter={() => setLogoHovered(true)}
+                onMouseLeave={() => setLogoHovered(false)}
+                onClick={(e) => {
+                  const img = e.currentTarget.querySelector('img');
+                  if (img) {
+                    const currentRotation = parseInt(img.style.rotate || '0');
+                    img.style.rotate = `${currentRotation + 360}deg`;
+                  }
+                }}
+              >
+                <img 
+                  src="/logo.png" 
+                  alt="Bubbles Logo" 
+                  className="w-full h-full object-contain animate-bubble-pop transition-all duration-500 ease-out"
+                  style={{ 
+                    background: 'transparent',
+                    transition: 'transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), rotate 1s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+                    transform: logoHovered ? 'scale(1.4)' : 'scale(1)'
+                  }}
+                />
+              </div>
               <div className="flex items-center gap-1.5 min-w-0">
                 <h1 
                   className="text-lg sm:text-xl font-bold tracking-tight" 
