@@ -129,7 +129,7 @@ export default function ChatInput({
   const canSend = inputValue.trim() && !isDisabled;
 
   return (
-    <div className={`border-t border-[#4d4d4d] bg-[#2a2a2a] ${isMobile ? 'px-3 py-3' : 'px-6 py-3'} flex-shrink-0`}>
+    <div className={`border-t border-[#4d4d4d] bg-[#1a1a1a] ${isMobile ? 'px-3 py-3' : 'px-6 py-3'} flex-shrink-0 relative`} style={{ boxShadow: '0 -8px 16px rgba(0, 0, 0, 0.4)' }}>
       <div className={`${isMobile ? 'max-w-full' : 'max-w-4xl'} mx-auto relative`}>
         <label htmlFor="chat-input" className="sr-only">
           Type your message
@@ -144,11 +144,11 @@ export default function ChatInput({
           disabled={isDisabled}
           aria-label="Chat message input"
           aria-describedby="chat-input-help"
-          className={`w-full ${isMobile ? 'max-h-[120px] text-base' : 'max-h-[150px] text-[15px]'} bg-[#2f2f2f] border border-[#565656] text-[#ececec] placeholder:text-[#8e8e8e] ${isMobile ? 'rounded-xl' : 'rounded-lg'} ${isMobile ? 'px-3 py-2.5 pr-12' : 'px-4 py-2 pr-11'} resize-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-[#6e6e6e] leading-normal overflow-y-auto ${prefersReducedMotion ? '' : 'transition-all duration-200'}`}
+          className={`w-full ${isMobile ? 'max-h-[120px] text-base' : 'max-h-[150px] text-[15px]'} bg-[#2a2a2a] border border-[#4a4a4a] text-[#ececec] placeholder:text-[#6e6e6e] ${isMobile ? 'rounded-xl' : 'rounded-xl'} ${isMobile ? 'px-3 py-2.5 pr-12' : 'px-4 py-2.5 pr-12'} resize-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-[#00D5FF]/50 leading-normal overflow-y-auto ${prefersReducedMotion ? '' : 'transition-colors duration-200'}`}
           style={{ 
             fontSize: isMobile ? '16px' : '15px',
-            minHeight: isMobile ? '44px' : '42px',
-            height: isMobile ? '44px' : '42px',
+            minHeight: isMobile ? '44px' : '48px',
+            height: isMobile ? '44px' : '48px',
             scrollbarWidth: 'none',
             msOverflowStyle: 'none',
           }}
@@ -161,19 +161,17 @@ export default function ChatInput({
           onClick={handleSubmit}
           disabled={!canSend}
           aria-label={isSubmitting || isLoading ? 'Sending message' : 'Send message'}
-          className={`absolute right-0.5 top-0.5 ${isMobile ? 'h-[40px] w-[40px] rounded-lg' : 'h-[38px] w-[38px] rounded-md'} p-0 bg-[#ececec] hover:bg-[#d4d4d4] ${prefersReducedMotion ? '' : 'hover:scale-105 active:scale-95'} text-[#0d0d0d] disabled:opacity-30 disabled:cursor-not-allowed ${prefersReducedMotion ? '' : 'transition-all duration-200'} shadow-sm flex items-center justify-center`}
-          style={{ willChange: prefersReducedMotion ? 'auto' : 'transform, background-color' }}
+          className={`absolute ${isMobile ? 'right-2 top-1/2 -translate-y-1/2 h-[36px] w-[36px]' : 'right-2 top-1/2 -translate-y-1/2 h-[36px] w-[36px]'} p-0 rounded-lg bg-[#00D5FF] hover:bg-[#00B8E6] text-[#0d0d0d] disabled:opacity-30 disabled:bg-[#4a4a4a] disabled:cursor-not-allowed ${prefersReducedMotion ? '' : 'transition-all duration-200'} flex items-center justify-center`}
           title="Send message (Enter)"
         >
           {isSubmitting || isLoading ? (
             <div 
-              className={`${isMobile ? 'w-4.5 h-4.5' : 'w-4 h-4'} border-2 border-[#565656] border-t-[#0d0d0d] rounded-full animate-spin`}
-              style={{ willChange: prefersReducedMotion ? 'auto' : 'transform' }}
+              className={`${isMobile ? 'w-5 h-5' : 'w-4 h-4'} border-2 border-[#4a4a4a] border-t-[#00D5FF] rounded-full animate-spin`}
               role="status"
               aria-label="Loading"
             ></div>
           ) : (
-            <ArrowUp className={`${isMobile ? 'w-5 h-5' : 'w-4 h-4'} ${prefersReducedMotion ? '' : 'transition-transform duration-200'}`} strokeWidth={2.5} />
+            <ArrowUp className={`${isMobile ? 'w-5 h-5' : 'w-4 h-4'}`} strokeWidth={2.5} />
           )}
         </Button>
       </div>

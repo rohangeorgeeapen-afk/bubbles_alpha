@@ -108,14 +108,17 @@ const MessagePair = memo(function MessagePair({
 
   return (
     <div 
-      className={`mb-12 ${prefersReducedMotion ? '' : 'animate-in fade-in slide-in-from-bottom-2 duration-300'}`}
-      style={{ willChange: prefersReducedMotion ? 'auto' : 'transform, opacity' }}
+      className={`mb-20 border border-[#00D5FF]/30 rounded-2xl p-6 bg-[#2a2a2a]/30 ${prefersReducedMotion ? '' : 'animate-in fade-in slide-in-from-bottom-2 duration-300'}`}
+      style={{ 
+        willChange: prefersReducedMotion ? 'auto' : 'transform, opacity',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3), 0 0 40px rgba(0, 213, 255, 0.05)'
+      }}
       role="article"
       aria-label="Conversation exchange"
     >
       {/* User Question */}
       <div className="mb-5">
-        <div className="text-[21px] font-normal text-[#ececec] leading-[1.6] whitespace-pre-wrap break-words">
+        <div className="text-[24px] font-semibold text-[#ececec] leading-[1.4] whitespace-pre-wrap break-words" style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 213, 255, 0.1)' }}>
           {question}
         </div>
       </div>
@@ -237,11 +240,18 @@ export default function FullscreenChatView({
 
   // Auto-scroll to bottom when new message is added
   const scrollToBottom = useCallback((smooth: boolean = true) => {
-    if (messagesEndRef.current && !userHasScrolled) {
-      messagesEndRef.current.scrollIntoView({ 
-        behavior: (smooth && !prefersReducedMotion) ? 'smooth' : 'auto',
-        block: 'end'
-      });
+    if (messagesContainerRef.current && !userHasScrolled) {
+      const container = messagesContainerRef.current;
+      const targetScroll = container.scrollHeight - container.clientHeight;
+      
+      if (smooth && !prefersReducedMotion) {
+        container.scrollTo({
+          top: targetScroll,
+          behavior: 'smooth'
+        });
+      } else {
+        container.scrollTop = targetScroll;
+      }
     }
   }, [userHasScrolled, prefersReducedMotion]);
 
@@ -292,7 +302,7 @@ export default function FullscreenChatView({
   const handleScroll = () => {
     if (messagesContainerRef.current) {
       const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
-      const isAtBottom = scrollHeight - scrollTop - clientHeight < 50;
+      const isAtBottom = scrollHeight - scrollTop - clientHeight < 10;
       setUserHasScrolled(!isAtBottom);
       setShowScrollButton(!isAtBottom);
       
@@ -305,11 +315,18 @@ export default function FullscreenChatView({
 
   // Scroll to bottom manually when button is clicked
   const scrollToBottomManually = () => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ 
-        behavior: prefersReducedMotion ? 'auto' : 'smooth',
-        block: 'end'
-      });
+    if (messagesContainerRef.current) {
+      const container = messagesContainerRef.current;
+      const targetScroll = container.scrollHeight - container.clientHeight;
+      
+      if (prefersReducedMotion) {
+        container.scrollTop = targetScroll;
+      } else {
+        container.scrollTo({
+          top: targetScroll,
+          behavior: 'smooth'
+        });
+      }
       setUserHasScrolled(false);
       setShowScrollButton(false);
     }
@@ -407,8 +424,9 @@ export default function FullscreenChatView({
             >
               {!isTransitioning && (
                 <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <svg width="6" height="6" viewBox="0 0 6 6" fill="none" className="text-[#004a00]">
-                    <path d="M3 5V1M1 3L3 1L5 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <svg width="8" height="8" viewBox="0 0 8 8" fill="none" className="text-[#004a00]">
+                    <path d="M1 3.5L3.5 3.5L3.5 1M7 4.5L4.5 4.5L4.5 7" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M1 3.5L3.5 1M7 4.5L4.5 7" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
                   </svg>
                 </span>
               )}
@@ -470,7 +488,6 @@ export default function FullscreenChatView({
         onScroll={handleScroll}
         className={`flex-1 overflow-y-auto ${isMobile ? 'px-4 py-4' : 'px-6 py-6'} relative`}
         style={{ 
-          scrollBehavior: prefersReducedMotion ? 'auto' : 'smooth',
           willChange: 'scroll-position'
         }}
         role="log"
@@ -565,6 +582,7 @@ export default function FullscreenChatView({
         autoFocus={true}
         disabled={isTransitioning}
         isTransitioning={isTransitioning}
+        placeholder="Add a follow-up... "
       />
     </div>
   );

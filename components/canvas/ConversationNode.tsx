@@ -132,8 +132,9 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
                   >
                     {isHovered && (
                       <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <svg width="6" height="6" viewBox="0 0 6 6" fill="none" className="text-[#004a00]">
-                          <path d="M1 3L3 1L5 3M3 1V5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <svg width="8" height="8" viewBox="0 0 8 8" fill="none" className="text-[#004a00]">
+                          <path d="M1 3.5L1 1L3.5 1M7 4.5L7 7L4.5 7" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M1 1L3 3M7 7L5 5" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
                         </svg>
                       </span>
                     )}
@@ -203,7 +204,7 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
             onClick={preventReactFlowEvents}
             onDoubleClick={preventReactFlowEvents}
           >
-            <div className="text-[15px] text-[#ececec] whitespace-pre-wrap break-words leading-relaxed cursor-text select-text">
+            <div className="text-[18px] font-semibold text-[#ececec] whitespace-pre-wrap break-words leading-[1.4] cursor-text select-text" style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 213, 255, 0.1)' }}>
               {data.question}
             </div>
           </div>
@@ -263,7 +264,8 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
                 }}
                 disabled={isSubmitting}
                 aria-label="Follow-up question input"
-                className="w-full h-9 bg-[#2f2f2f] border border-[#565656] text-[#ececec] placeholder:text-[#8e8e8e] rounded-lg px-3 pr-10 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm nodrag nopan"
+                className="w-full h-9 bg-[#2a2a2a] border border-[#4a4a4a] text-[#ececec] placeholder:text-[#6e6e6e] rounded-lg px-3 pr-10 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-[#00D5FF]/50 transition-colors text-sm nodrag nopan"
+                style={{ fontSize: '14px' }}
               />
               <Button
                 onClick={async () => {
@@ -284,12 +286,12 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
                 }}
                 disabled={!followUpText.trim() || isSubmitting}
                 aria-label={isSubmitting ? 'Sending follow-up' : 'Send follow-up question'}
-                className={`absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0 rounded-md bg-[#ececec] hover:bg-[#d4d4d4] text-[#0d0d0d] disabled:opacity-30 disabled:cursor-not-allowed ${prefersReducedMotion ? '' : 'transition-opacity'} select-none`}
+                className={`absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0 rounded-lg bg-[#00D5FF] hover:bg-[#00B8E6] text-[#0d0d0d] disabled:opacity-30 disabled:bg-[#4a4a4a] disabled:cursor-not-allowed ${prefersReducedMotion ? '' : 'transition-all'} select-none`}
               >
                 {isSubmitting ? (
-                  <div className="w-3.5 h-3.5 border-2 border-[#565656] border-t-[#0d0d0d] rounded-full animate-spin"></div>
+                  <div className="w-3.5 h-3.5 border-2 border-[#4a4a4a] border-t-[#00D5FF] rounded-full animate-spin"></div>
                 ) : (
-                  <ArrowUp className="w-3.5 h-3.5" strokeWidth={2} />
+                  <ArrowUp className="w-3.5 h-3.5" strokeWidth={2.5} />
                 )}
               </Button>
             </div>
