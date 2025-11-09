@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, MessageSquare, Trash2, PanelLeftClose, PanelLeft, User, LogOut, Pencil, Check, X, Search, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, PanelLeftClose, PanelLeft, User, LogOut, Pencil, Check, X, Search, AlertTriangle } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -47,6 +47,10 @@ export default function Sidebar({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [canvasToDelete, setCanvasToDelete] = useState<Canvas | null>(null);
   const [deletingCanvasId, setDeletingCanvasId] = useState<string | null>(null);
+  const [signOutDialogOpen, setSignOutDialogOpen] = useState(false);
+
+  // Check if there's an empty canvas (0 nodes)
+  const hasEmptyCanvas = canvases.some(canvas => canvas.nodeCount === 0);
 
   const handleStartEdit = (canvas: Canvas, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -81,6 +85,18 @@ export default function Sidebar({
         canvas.name.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : canvases;
+
+  const handleNewCanvasClick = () => {
+    if (hasEmptyCanvas) {
+      // Find the empty canvas and switch to it
+      const emptyCanvas = canvases.find(canvas => canvas.nodeCount === 0);
+      if (emptyCanvas) {
+        onSelectCanvas(emptyCanvas.id);
+      }
+    } else {
+      onNewCanvas();
+    }
+  };
 
   return (
     <>
@@ -169,11 +185,9 @@ export default function Sidebar({
           ) : (
             <div className="flex gap-2">
               <button
-                onClick={onNewCanvas}
-                className="flex-1 bg-[#2a2a2a] text-[#ececec] rounded-lg font-normal text-sm sm:text-base border border-[#4a4a4a] h-11 sm:h-12 whitespace-nowrap overflow-hidden shadow-md transition-all duration-200 flex items-center hover:border-[#00D5FF]/50 hover:shadow-lg hover:shadow-[#00D5FF]/30 hover:-translate-y-0.5 relative pl-4 touch-manipulation"
-                style={{
-                  background: 'rgba(42, 42, 42, 0.8)',
-                }}
+                onClick={handleNewCanvasClick}
+                className="flex-1 bg-[#2a2a2a] text-[#ececec] rounded-lg font-normal text-sm sm:text-base border border-[#4a4a4a] h-11 sm:h-12 whitespace-nowrap overflow-hidden shadow-md transition-all duration-200 flex items-center hover:border-[#00D5FF]/50 hover:shadow-md hover:shadow-[#00D5FF]/20 hover:-translate-y-[2px] relative pl-4 touch-manipulation"
+                style={{ background: 'rgba(42, 42, 42, 0.8)' }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = 'linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(96, 165, 250, 0.2))';
                 }}
@@ -186,10 +200,8 @@ export default function Sidebar({
               </button>
               <button
                 onClick={handleToggleSearch}
-                className="flex-shrink-0 bg-[#2a2a2a] text-[#ececec] rounded-lg border border-[#4a4a4a] h-11 w-11 sm:h-12 sm:w-12 shadow-md transition-all duration-200 flex items-center justify-center hover:border-[#00D5FF]/50 hover:shadow-lg hover:shadow-[#00D5FF]/30 hover:-translate-y-0.5 touch-manipulation"
-                style={{
-                  background: 'rgba(42, 42, 42, 0.8)',
-                }}
+                className="flex-shrink-0 bg-[#2a2a2a] text-[#ececec] rounded-lg border border-[#4a4a4a] h-11 w-11 sm:h-12 sm:w-12 shadow-md transition-all duration-200 flex items-center justify-center hover:border-[#00D5FF]/50 hover:shadow-md hover:shadow-[#00D5FF]/20 hover:-translate-y-[2px] touch-manipulation"
+                style={{ background: 'rgba(42, 42, 42, 0.8)' }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = 'linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(96, 165, 250, 0.2))';
                 }}
@@ -213,98 +225,96 @@ export default function Sidebar({
               </div>
             ) : (
               filteredCanvases.map((canvas) => (
-                <div
-                  key={canvas.id}
-                  className={`group relative rounded-lg transition-all duration-300 ${
-                    deletingCanvasId === canvas.id
-                      ? 'opacity-0 scale-95 -translate-x-4'
-                      : 'opacity-100 scale-100 translate-x-0'
-                  } ${
-                    currentCanvasId === canvas.id
-                      ? 'bg-gradient-to-r from-[#00D5FF]/10 to-[#00D5FF]/10 border-l-2 border-[#00D5FF]'
-                      : 'hover:bg-[#212121]'
-                  }`}
-                >
-                  {editingId === canvas.id ? (
-                    /* Editing mode */
-                    <div className="px-3 py-3 pr-20">
-                      <div className="flex items-center gap-2">
-                        <MessageSquare className={`w-4 h-4 flex-shrink-0 ${currentCanvasId === canvas.id ? 'text-[#00D5FF]' : 'text-[#b4b4b4]'}`} strokeWidth={2} />
-                        <Input
-                          value={editingName}
-                          onChange={(e) => setEditingName(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              handleSaveEdit(canvas.id);
-                            } else if (e.key === 'Escape') {
-                              handleCancelEdit();
-                            }
-                          }}
-                          className="h-7 text-sm bg-[#2a2a2a] border-[#565656] text-[#ececec] focus-visible:ring-0 focus-visible:ring-offset-0"
-                          autoFocus
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      </div>
-                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
-                        <button
-                          onClick={() => handleSaveEdit(canvas.id)}
-                          className="p-1.5 rounded hover:bg-[#2f2f2f] transition-colors"
-                          title="Save"
-                        >
-                          <Check className="w-4 h-4 text-green-400" strokeWidth={2} />
-                        </button>
-                        <button
-                          onClick={handleCancelEdit}
-                          className="p-1.5 rounded hover:bg-[#2f2f2f] transition-colors"
-                          title="Cancel"
-                        >
-                          <X className="w-4 h-4 text-[#b4b4b4]" strokeWidth={2} />
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    /* Normal mode */
-                    <>
-                      <button
-                        onClick={() => onSelectCanvas(canvas.id)}
-                        className="w-full text-left px-3 py-3 pr-20"
+                      <div
+                        key={canvas.id}
+                        className={`group relative rounded-lg ${
+                          deletingCanvasId === canvas.id
+                            ? 'opacity-0 scale-95 -translate-x-4 transition-all duration-300'
+                            : ''
+                        } ${
+                          currentCanvasId === canvas.id
+                            ? 'bg-gradient-to-r from-[#00D5FF]/10 to-[#00D5FF]/10 border-l-2 border-[#00D5FF]'
+                            : 'hover:bg-[#212121]'
+                        }`}
                       >
-                        <div className="flex items-start gap-3">
-                          <MessageSquare className={`w-4 h-4 mt-0.5 flex-shrink-0 ${currentCanvasId === canvas.id ? 'text-[#00D5FF]' : 'text-[#b4b4b4]'}`} strokeWidth={2} />
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm text-[#ececec] truncate">
-                              {canvas.name.length > 15 ? canvas.name.substring(0, 15) + '...' : canvas.name}
+                        {editingId === canvas.id ? (
+                          /* Editing mode */
+                          <div className="px-3 py-2 pr-20">
+                            <div className="flex items-center gap-2">
+                              <Input
+                                value={editingName}
+                                onChange={(e) => setEditingName(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    handleSaveEdit(canvas.id);
+                                  } else if (e.key === 'Escape') {
+                                    handleCancelEdit();
+                                  }
+                                }}
+                                className="h-7 text-sm bg-[#2a2a2a] border-[#565656] text-[#ececec] focus-visible:ring-0 focus-visible:ring-offset-0"
+                                autoFocus
+                                onClick={(e) => e.stopPropagation()}
+                              />
                             </div>
-                            <div className="text-xs text-[#b4b4b4] mt-1">
-                              {canvas.nodeCount} nodes
+                            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
+                              <button
+                                onClick={() => handleSaveEdit(canvas.id)}
+                                className="p-1.5 rounded hover:bg-[#2f2f2f] transition-colors"
+                                title="Save"
+                              >
+                                <Check className="w-4 h-4 text-green-400" strokeWidth={2} />
+                              </button>
+                              <button
+                                onClick={handleCancelEdit}
+                                className="p-1.5 rounded hover:bg-[#2f2f2f] transition-colors"
+                                title="Cancel"
+                              >
+                                <X className="w-4 h-4 text-[#b4b4b4]" strokeWidth={2} />
+                              </button>
                             </div>
                           </div>
-                        </div>
-                      </button>
-                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={(e) => handleStartEdit(canvas, e)}
-                          className="p-1.5 rounded hover:bg-[#2f2f2f] transition-colors"
-                          title="Rename"
-                        >
-                          <Pencil className="w-4 h-4 text-[#b4b4b4] hover:text-[#ececec]" strokeWidth={2} />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setCanvasToDelete(canvas);
-                            setDeleteDialogOpen(true);
-                          }}
-                          className="p-1.5 rounded hover:bg-[#2f2f2f] transition-colors"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4 text-[#b4b4b4] hover:text-[#ef4444]" strokeWidth={2} />
-                        </button>
+                        ) : (
+                          /* Normal mode */
+                          <>
+                            <button
+                              onClick={() => onSelectCanvas(canvas.id)}
+                              className="w-full text-left px-3 py-2 pr-20"
+                            >
+                              <div className="flex items-start">
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-sm text-[#ececec] truncate">
+                                    {canvas.name.length > 15 ? canvas.name.substring(0, 15) + '...' : canvas.name}
+                                  </div>
+                                  <div className="text-xs text-[#b4b4b4] mt-1">
+                                    {canvas.nodeCount} nodes
+                                  </div>
+                                </div>
+                              </div>
+                            </button>
+                            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={(e) => handleStartEdit(canvas, e)}
+                                className="p-1.5 rounded hover:bg-[#2f2f2f] transition-colors"
+                                title="Rename"
+                              >
+                                <Pencil className="w-4 h-4 text-[#b4b4b4] hover:text-[#ececec]" strokeWidth={2} />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCanvasToDelete(canvas);
+                                  setDeleteDialogOpen(true);
+                                }}
+                                className="p-1.5 rounded hover:bg-[#2f2f2f] transition-colors"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-4 h-4 text-[#b4b4b4] hover:text-[#ef4444]" strokeWidth={2} />
+                              </button>
+                            </div>
+                          </>
+                        )}
                       </div>
-                    </>
-                  )}
-                </div>
-              ))
+                    ))
             )}
           </div>
         </ScrollArea>
@@ -322,7 +332,7 @@ export default function Sidebar({
               </div>
               {onSignOut && (
                 <button
-                  onClick={onSignOut}
+                  onClick={() => setSignOutDialogOpen(true)}
                   className="p-1 hover:bg-[#2f2f2f] rounded transition-colors flex-shrink-0"
                   title="Sign out"
                 >
@@ -397,6 +407,41 @@ export default function Sidebar({
               className="bg-[#ef4444] text-white hover:bg-[#dc2626]"
             >
               Delete Canvas
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Sign Out Confirmation Dialog */}
+      <Dialog open={signOutDialogOpen} onOpenChange={setSignOutDialogOpen}>
+        <DialogContent className="bg-[#2a2a2a] border border-[#4a4a4a] text-[#ececec] max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-[#ececec]">
+              <LogOut className="w-5 h-5 text-[#ef4444]" />
+              Sign Out
+            </DialogTitle>
+            <DialogDescription className="text-[#b4b4b4] pt-2">
+              Are you sure you want to sign out?
+              <br />
+              <span className="text-[#8e8e8e] text-sm">You&apos;ll need to sign in again to access your canvases.</span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setSignOutDialogOpen(false)}
+              className="bg-transparent border-[#4a4a4a] text-[#ececec] hover:bg-[#3a3a3a] hover:text-[#ececec]"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                setSignOutDialogOpen(false);
+                onSignOut?.();
+              }}
+              className="bg-[#ef4444] text-white hover:bg-[#dc2626]"
+            >
+              Sign Out
             </Button>
           </DialogFooter>
         </DialogContent>

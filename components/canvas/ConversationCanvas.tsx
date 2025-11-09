@@ -68,6 +68,7 @@ function ConversationCanvasInner({
   onUpdate,
   sidebarOpen = true
 }: ConversationCanvasProps = {}) {
+  console.log('🎨 ConversationCanvas: Rendering with', { nodeCount: initialNodes.length, edgeCount: initialEdges.length });
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialEdges);
   const [searchTerm, setSearchTerm] = useState('');
@@ -603,7 +604,7 @@ function ConversationCanvasInner({
       setIsPanning(false);
       processPanQueue();
     }
-  }, [reactFlowInstance, processPanQueue]);
+  }, [reactFlowInstance]);
 
   // Public function that handles queueing
   const handleSmartPanning = useCallback((parentId: string, childId: string, currentNodes: Node[]) => {

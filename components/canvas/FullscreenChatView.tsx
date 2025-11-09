@@ -2,7 +2,7 @@
 
 import React, { useRef, useEffect, useState, useMemo, memo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { X, ArrowDown } from 'lucide-react';
+import { X, ArrowDown, Minimize2, Maximize2 } from 'lucide-react';
 import MarkdownContent from '@/components/shared/MarkdownContent';
 import ChatInput from './ChatInput';
 
@@ -438,7 +438,7 @@ export default function FullscreenChatView({
             {/* Minimize button - Disabled/Greyed out */}
             <button
               disabled
-              className="w-11 h-8 flex items-center justify-center cursor-default opacity-30"
+              className="w-11 h-8 flex items-center justify-center cursor-default opacity-40"
               aria-label="Minimize (disabled)"
               aria-hidden="true"
               title="Minimize (disabled)"
@@ -452,31 +452,26 @@ export default function FullscreenChatView({
             <button
               onClick={onClose}
               disabled={isTransitioning}
-              className={`w-11 h-8 flex items-center justify-center ${prefersReducedMotion ? '' : 'transition-colors'} ${
+              className={`w-11 h-8 flex items-center justify-center rounded ${prefersReducedMotion ? '' : 'transition-colors'} ${
                 isTransitioning
-                  ? 'cursor-not-allowed opacity-30'
+                  ? 'cursor-not-allowed opacity-40'
                   : 'hover:bg-[#3a3a3a] cursor-pointer'
               }`}
               aria-label="Restore to node view"
               title="Restore (Esc)"
             >
-              <svg width="10" height="10" viewBox="0 0 10 10" className="text-[#ececec]">
-                <rect x="2" y="0" width="8" height="8" fill="none" stroke="currentColor" strokeWidth="1.5"/>
-                <rect x="0" y="2" width="8" height="8" fill="none" stroke="currentColor" strokeWidth="1.5"/>
-              </svg>
+              <Maximize2 className="w-4 h-4 text-[#ececec]" />
             </button>
             
             {/* Close button - Disabled/Greyed out */}
             <button
               disabled
-              className="w-11 h-8 flex items-center justify-center cursor-default opacity-30"
+              className="w-11 h-8 flex items-center justify-center cursor-default opacity-40"
               aria-label="Close (disabled)"
               aria-hidden="true"
               title="Close (disabled)"
             >
-              <svg width="10" height="10" viewBox="0 0 10 10" className="text-[#ececec]">
-                <path d="M1 1L9 9M9 1L1 9" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
-              </svg>
+              <X className="w-4 h-4 text-[#ececec]" />
             </button>
           </div>
         )}

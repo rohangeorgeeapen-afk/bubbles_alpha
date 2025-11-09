@@ -85,10 +85,13 @@ export default function CanvasManager() {
     }
     
     try {
+      console.log('📡 Calling Supabase to load canvases...');
       const { data, error } = await supabase
         .from('canvases')
         .select('*')
         .order('created_at', { ascending: false });
+
+      console.log('📡 Supabase response:', { hasData: !!data, hasError: !!error, dataLength: data?.length });
 
       if (error) {
         // If auth error, just clear state silently
@@ -101,13 +104,55 @@ export default function CanvasManager() {
       }
 
       if (data && data.length > 0) {
-        const formattedCanvases = data.map((canvas) => ({
-          id: canvas.id,
-          name: canvas.name,
-          createdAt: canvas.created_at,
-          nodes: canvas.nodes || [],
-          edges: canvas.edges || [],
-        }));
+        // Validate and clean canvas data to handle corrupted data
+        const formattedCanvases: CanvasData[] = [];
+        const corruptedCanvases: string[] = [];
+        
+        for (const canvas of data) {
+          try {
+            // Validate canvas has required fields
+            if (!canvas.id || !canvas.name) {
+              corruptedCanvases.push(canvas.id || 'unknown');
+              continue;
+            }
+            
+            // Validate and clean nodes/edges arrays
+            let nodes = canvas.nodes || [];
+            let edges = canvas.edges || [];
+            
+            if (!Array.isArray(nodes)) {
+              nodes = [];
+            }
+            
+            if (!Array.isArray(edges)) {
+              edges = [];
+            }
+            
+            // Filter out invalid nodes
+            const validNodes = nodes.filter((node: any) => {
+              return node && typeof node === 'object' && node.id && node.type;
+            });
+            
+            // Filter out invalid edges
+            const validEdges = edges.filter((edge: any) => {
+              return edge && typeof edge === 'object' && edge.id && edge.source && edge.target;
+            });
+            
+            formattedCanvases.push({
+              id: canvas.id,
+              name: canvas.name,
+              createdAt: canvas.created_at,
+              nodes: validNodes,
+              edges: validEdges,
+            });
+          } catch (canvasError) {
+            corruptedCanvases.push(canvas.id);
+          }
+        }
+        
+        if (corruptedCanvases.length > 0) {
+          alert(`Warning: ${corruptedCanvases.length} corrupted canvas(es) were skipped. You may want to delete them from the Supabase dashboard.`);
+        }
         
         // Only update canvases if data has actually changed
         setCanvases(prevCanvases => {
@@ -126,19 +171,24 @@ export default function CanvasManager() {
           if (prevId && formattedCanvases.some(c => c.id === prevId)) {
             return prevId;
           }
-          // Otherwise, select the first canvas
-          return formattedCanvases[0].id;
+          // Otherwise, select the first canvas (if any exist)
+          return formattedCanvases.length > 0 ? formattedCanvases[0].id : null;
         });
       } else {
         // No canvases yet
         setCanvases([]);
         setCurrentCanvasId(null);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load canvases:', error);
-      setCanvases([]);
-      setCurrentCanvasId(null);
+      
+      // Don't clear canvases if we already have some loaded
+      if (canvases.length === 0) {
+        setCanvases([]);
+        setCurrentCanvasId(null);
+      }
     } finally {
+      console.log('✅ loadCanvases finally block - setting hasInitialized to true');
       if (isInitialLoad) {
         setLoading(false);
       }
@@ -155,6 +205,7 @@ export default function CanvasManager() {
 
     if (!user) {
       setLoading(false);
+      setHasInitialized(true);
       return;
     }
 

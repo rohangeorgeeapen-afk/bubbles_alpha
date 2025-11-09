@@ -1,14 +1,20 @@
 # Mobile Optimization Guide
 
-## ✅ What's Been Optimized
+## ⚠️ Current Status: NOT MOBILE READY
 
-Your app is now fully optimized for mobile devices with the following improvements:
+**Important:** This app is currently **NOT optimized for mobile devices**. Mobile support is planned for a future update.
 
-### Core Fixes
-- **Responsive Design**: Nodes adapt to screen width (`min(450px, calc(100vw-2rem))`)
-- **Touch Interactions**: Smooth panning, pinch-to-zoom, proper touch targets (44px minimum)
-- **iOS Safari**: Fixed viewport issues, prevented unwanted zoom, proper keyboard handling
-- **Cross-Browser**: Works on Chrome Mobile, Firefox Mobile, Samsung Internet, Edge Mobile
+### Known Issues
+- Canvas interaction may not work properly on touch devices
+- Layout may break on small screens
+- Touch gestures (pan, zoom) may be unreliable
+- Text input may have keyboard issues on mobile
+- Overall user experience is poor on phones
+
+### Partial Optimizations (In Progress)
+- **Responsive Design**: Nodes have responsive width (`min(450px, calc(100vw-2rem))`)
+- **Touch Targets**: Minimum 44px touch targets in CSS
+- **Viewport Meta**: Basic viewport configuration added
 
 ### Files Modified
 - `app/layout.tsx` - Added proper viewport meta tag
@@ -20,62 +26,76 @@ Your app is now fully optimized for mobile devices with the following improvemen
 - `components/auth/AuthModal.tsx` - Mobile spacing
 - `components/ui/dialog.tsx` - Mobile padding
 
-## 📱 Quick Test (5 minutes)
+## 📱 Recommended Usage
 
-1. **Open on your phone**: No horizontal scroll should appear
-2. **Touch interactions**: Tap nodes, pan canvas, pinch to zoom
-3. **Type in inputs**: No unwanted zoom on iOS
-4. **Rotate device**: Layout should adjust properly
-5. **Test sidebar**: Should overlay on mobile, push content on desktop
+**Use on Desktop/Laptop** - The app is designed for desktop browsers and works best on:
+- Desktop Chrome, Firefox, Safari, Edge
+- Laptop/Desktop with mouse and keyboard
+- Screen width: 1024px or larger
+
+**Mobile Not Recommended** - Mobile users will see a warning dialog explaining the app is not optimized for their device.
 
 ## 🌐 Browser Support
 
 | Browser | Status |
 |---------|--------|
-| iOS Safari 14+ | ✅ Fully Supported |
-| Chrome Mobile 90+ | ✅ Fully Supported |
-| Firefox Mobile 90+ | ✅ Fully Supported |
-| Samsung Internet 14+ | ✅ Fully Supported |
-| Edge Mobile 90+ | ✅ Fully Supported |
+| Desktop Chrome 90+ | ✅ Fully Supported |
+| Desktop Firefox 90+ | ✅ Fully Supported |
+| Desktop Safari 14+ | ✅ Fully Supported |
+| Desktop Edge 90+ | ✅ Fully Supported |
+| iOS Safari | ❌ Not Optimized |
+| Chrome Mobile | ❌ Not Optimized |
+| Firefox Mobile | ❌ Not Optimized |
+| Samsung Internet | ❌ Not Optimized |
+| Edge Mobile | ❌ Not Optimized |
 
-## 🔧 Common Issues & Fixes
+## 🔧 Known Issues (To Be Fixed)
 
-### Issue: Horizontal scroll appears
-**Fix**: Check for fixed widths, use responsive units like `max-w-[450px]`
+### Issue: Canvas interaction doesn't work on mobile
+**Status**: Not fixed - requires touch event handling implementation
 
-### Issue: Text too small on mobile
-**Fix**: Ensure minimum 16px font size for inputs to prevent iOS zoom
+### Issue: Layout breaks on small screens
+**Status**: Not fixed - needs responsive layout redesign
 
-### Issue: Can't tap buttons easily
-**Fix**: Ensure minimum 44x44px touch targets
+### Issue: Can't pan/zoom properly with touch
+**Status**: Not fixed - requires ReactFlow mobile configuration
 
-### Issue: Keyboard covers input (iOS)
-**Fix**: Already handled with proper viewport configuration
+### Issue: Sidebar doesn't work well on mobile
+**Status**: Partially fixed - has overlay but needs improvement
 
-## 🚀 Performance Metrics
+### Issue: Text input has keyboard issues
+**Status**: Not fixed - needs iOS keyboard handling
 
-- **Load Time**: < 3s on 3G
-- **Touch Response**: < 100ms
-- **Animation FPS**: 60fps
-- **Touch Targets**: 44x44px minimum
-- **Font Size**: 16px minimum for inputs
+## 📋 TODO: Mobile Optimization Checklist
 
-## 📋 Deploy Checklist
+When mobile optimization is prioritized, these tasks need to be completed:
 
-- [ ] Test on at least 2 real devices (iOS + Android)
+- [ ] Implement proper touch event handling for canvas
+- [ ] Add pinch-to-zoom gesture support
+- [ ] Fix sidebar for mobile (full overlay, better UX)
+- [ ] Optimize node size and layout for small screens
+- [ ] Fix text input keyboard issues on iOS
+- [ ] Test on real devices (iOS + Android)
+- [ ] Implement mobile-specific navigation
+- [ ] Add swipe gestures for common actions
+- [ ] Optimize performance for mobile devices
+- [ ] Test with slow 3G connection
+- [ ] Ensure all touch targets are 44x44px minimum
+- [ ] Fix any horizontal scroll issues
 - [ ] Test portrait and landscape orientations
-- [ ] Verify no horizontal scroll on any screen size
-- [ ] Check all buttons are easily tappable
-- [ ] Confirm text is readable without zooming
-- [ ] Test performance is smooth (60fps animations)
 
-## 💡 Testing Tips
+## 💡 Future Mobile Features
 
-1. **Use real devices** - Emulators don't catch everything
-2. **Test with slow 3G** - Reveals performance issues
-3. **Test one-handed use** - Common mobile pattern
-4. **Check in bright light** - Verify contrast and readability
+When mobile support is added, consider:
+
+1. **Simplified mobile UI** - Streamlined interface for small screens
+2. **Mobile-first navigation** - Bottom nav bar or hamburger menu
+3. **Gesture controls** - Swipe, pinch, long-press
+4. **Offline support** - PWA capabilities
+5. **Mobile-optimized animations** - Respect reduced motion preferences
 
 ---
 
-**Status**: ✅ Ready for mobile deployment
+**Status**: ❌ NOT mobile ready - Desktop only for now
+**Priority**: Low - Focus on desktop experience first
+**Timeline**: TBD - Will be addressed in future update
