@@ -230,7 +230,7 @@ export default function PrivacyPolicy() {
 
           {/* Children's Privacy */}
           <section>
-            <h2 className="text-2xl font-semibold mb-4">Children's Privacy</h2>
+            <h2 className="text-2xl font-semibold mb-4">Children&apos;s Privacy</h2>
             <p className="text-[#b4b4b4] leading-relaxed">
               Bubbles is not intended for users under the age of 13. We do not knowingly collect personal information from children under 13. If you believe we have collected information from a child under 13, please contact us immediately.
             </p>
@@ -259,7 +259,7 @@ export default function PrivacyPolicy() {
               We may update this Privacy Policy from time to time. When we make changes:
             </p>
             <ul className="list-disc list-inside text-[#b4b4b4] space-y-2 ml-4">
-              <li>We will update the "Last Updated" date at the top of this policy</li>
+              <li>We will update the &quot;Last Updated&quot; date at the top of this policy</li>
               <li>For material changes, we will notify you via email or through a notice in the application</li>
               <li>Your continued use of Bubbles after changes constitutes acceptance of the updated policy</li>
             </ul>
