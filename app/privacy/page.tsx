@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function PrivacyPolicy() {
   return (
@@ -7,7 +8,7 @@ export default function PrivacyPolicy() {
       <header className="border-b border-[#2a2a2a] bg-[#212121]">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <img src="/logo.png" alt="Bubbles Logo" className="w-8 h-8" />
+            <Image src="/logo.png" alt="Bubbles Logo" width={32} height={32} />
             <span className="text-xl font-bold">bubbles</span>
           </Link>
           <Link 
@@ -29,7 +30,7 @@ export default function PrivacyPolicy() {
           <section>
             <h2 className="text-2xl font-semibold mb-4">Introduction</h2>
             <p className="text-[#b4b4b4] leading-relaxed">
-              Welcome to Bubbles ("we," "our," or "us"). This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our graph-based AI conversation interface application.
+              Welcome to Bubbles (&quot;we,&quot; &quot;our,&quot; or &quot;us&quot;). This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our graph-based AI conversation interface application.
             </p>
           </section>
 
@@ -128,7 +129,7 @@ export default function PrivacyPolicy() {
               <li>We do not control how Google processes your data</li>
             </ul>
             <p className="text-[#b4b4b4] leading-relaxed mt-4">
-              Please review Google's privacy policy:
+              Please review Google&apos;s privacy policy:
             </p>
             <ul className="list-disc list-inside text-[#b4b4b4] space-y-2 ml-4">
               <li><a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-[#00D5FF] hover:underline">Google AI Privacy Policy</a></li>
@@ -242,10 +243,12 @@ export default function PrivacyPolicy() {
               If you have questions, concerns, or requests regarding this Privacy Policy or your data, please contact us at:
             </p>
             <p className="text-[#b4b4b4] leading-relaxed">
-              <strong className="text-[#ececec]">Email:</strong> <a href="mailto:rohan@chynex.com" className="text-[#00D5FF] hover:underline">rohan@chynex.com</a>
+              <strong className="text-[#ececec]">Email:</strong>{' '}
+              <a href="mailto:rohan@chynex.com" className="text-[#00D5FF] hover:underline">rohan@chynex.com</a>
             </p>
             <p className="text-[#b4b4b4] leading-relaxed mt-2">
-              <strong className="text-[#ececec]">Response Time:</strong> We aim to respond to all inquiries within 48 hours.
+              <strong className="text-[#ececec]">Response Time:</strong>{' '}
+              We aim to respond to all inquiries within 48 hours.
             </p>
           </section>
 
