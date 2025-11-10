@@ -259,6 +259,20 @@ export default function AuthModal({ open, onOpenChange }: AuthModalProps) {
               </>
             )}
           </div>
+
+          {isSignUp && (
+            <p className="text-center text-xs text-[#6e6e6e] mt-4">
+              By signing up, you agree to our{' '}
+              <a 
+                href="/privacy" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-[#8e8e8e] hover:text-[#ececec] transition-colors underline-offset-2 hover:underline"
+              >
+                Privacy Policy
+              </a>
+            </p>
+          )}
         </form>
       </DialogContent>
     </Dialog>

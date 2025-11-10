@@ -799,6 +799,29 @@ export default function CanvasManager() {
               <p className="text-[#6e6e6e] text-xs sm:text-sm mt-4">Free to use • No credit card required</p>
             </div>
           </section>
+
+          {/* Footer */}
+          <footer className="max-w-6xl mx-auto px-4 sm:px-6 md:px-8 py-8 border-t border-[#2a2a2a]">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <p className="text-[#6e6e6e] text-xs sm:text-sm">
+                © 2025 Bubbles. All rights reserved.
+              </p>
+              <div className="flex items-center gap-6">
+                <a 
+                  href="/privacy" 
+                  className="text-[#8e8e8e] hover:text-[#ececec] transition-colors text-xs sm:text-sm"
+                >
+                  Privacy Policy
+                </a>
+                <a 
+                  href="mailto:rohan@chynex.com" 
+                  className="text-[#8e8e8e] hover:text-[#ececec] transition-colors text-xs sm:text-sm"
+                >
+                  Contact
+                </a>
+              </div>
+            </div>
+          </footer>
         </div>
         
         <AuthModal 
