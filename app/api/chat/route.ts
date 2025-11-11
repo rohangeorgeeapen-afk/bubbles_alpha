@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { checkRateLimit, getRateLimitIdentifier } from '@/lib/rate-limit';
+import { createClient } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -83,6 +85,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Messages array is required' },
         { status: 400 }
+      );
+    }
+
+    // Check rate limit
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
+    const identifier = getRateLimitIdentifier(user?.id, ip);
+    
+    // Generous limits: 20/hour for anonymous, 100/hour for authenticated
+    const maxRequests = user ? 100 : 20;
+    const rateLimit = checkRateLimit(identifier, maxRequests);
+    
+    if (!rateLimit.allowed) {
+      const resetDate = new Date(rateLimit.resetTime);
+      const minutesUntilReset = Math.ceil((rateLimit.resetTime - Date.now()) / 60000);
+      return NextResponse.json(
+        { 
+          error: `You've reached your hourly limit. ${user ? 'Try again' : 'Sign in for more messages or try again'} in ${minutesUntilReset} minutes.` 
+        },
+        { status: 429 }
       );
     }
 
