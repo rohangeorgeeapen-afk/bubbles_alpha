@@ -460,7 +460,7 @@ export default function FullscreenChatView({
               aria-label="Restore to node view"
               title="Restore (Esc)"
             >
-              <Maximize2 className="w-4 h-4 text-[#ececec]" />
+              <Minimize2 className="w-4 h-4 text-[#ececec]" />
             </button>
             
             {/* Close button - Disabled/Greyed out */}
