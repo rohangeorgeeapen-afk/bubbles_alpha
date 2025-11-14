@@ -5,7 +5,7 @@ import { Handle, Position, NodeProps } from '@xyflow/react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowUp, Maximize2, X } from 'lucide-react';
+import { ArrowUp, Maximize2, X, Copy, Check } from 'lucide-react';
 import MarkdownContent from '@/components/shared/MarkdownContent';
 
 export interface ConversationNodeData extends Record<string, unknown> {
@@ -24,6 +24,7 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
   const [isHovered, setIsHovered] = useState(false);
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
   const showFooter = isHovered || isInputFocused;
   
   // Detect OS, mobile, and motion preferences
@@ -36,8 +37,10 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
     const userAgent = window.navigator.userAgent.toLowerCase();
     setIsMac(userAgent.includes('mac'));
     
-    // Detect if user is on mobile
-    setIsMobile(window.innerWidth < 768);
+    // Detect if user is on actual mobile device (not just small window)
+    const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    setIsMobile(isMobileDevice && isTouchDevice);
     
     // Check for reduced motion preference
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -47,21 +50,23 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
       setPrefersReducedMotion(e.matches);
     };
     
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    
     mediaQuery.addEventListener('change', handleMotionChange);
-    window.addEventListener('resize', handleResize);
     return () => {
       mediaQuery.removeEventListener('change', handleMotionChange);
-      window.removeEventListener('resize', handleResize);
     };
   }, []);
 
-  // Completely prevent ReactFlow from handling any mouse events in text areas
-  const preventReactFlowEvents = (e: React.MouseEvent | React.PointerEvent) => {
-    e.stopPropagation();
+
+
+  // Handle copy to clipboard
+  const handleCopyResponse = async () => {
+    try {
+      await navigator.clipboard.writeText(data.response);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy text:', err);
+    }
   };
 
   return (
@@ -71,7 +76,7 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onTouchStart={() => setIsHovered(true)}
-        className={`w-[min(450px,calc(100vw-2rem))] bg-[#2f2f2f] border border-[#4d4d4d] rounded-2xl shadow-lg overflow-hidden flex flex-col nowheel select-none ${prefersReducedMotion ? '' : 'transition-all duration-300 ease-in-out'} ${
+        className={`w-[450px] bg-[#2f2f2f] border border-[#4d4d4d] rounded-2xl shadow-lg overflow-hidden flex flex-col nowheel select-none ${prefersReducedMotion ? '' : 'transition-all duration-300 ease-in-out'} ${
           isLongContent 
             ? (showFooter ? 'h-[468px]' : 'h-[400px]')
             : (showFooter ? '' : '')
@@ -80,7 +85,7 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
         aria-label="Conversation node"
       >
         {/* Header with OS-specific window control buttons */}
-        <div className="h-8 bg-[#2a2a2a] border-b border-[#4d4d4d] flex items-center px-3 flex-shrink-0 justify-between">
+        <div className="h-8 bg-[#2a2a2a] border-b border-[#4d4d4d] flex items-center px-3 flex-shrink-0 justify-between relative">
           {data.onDelete && (
             <>
               {isMac ? (
@@ -145,7 +150,7 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
                 <div className="ml-auto flex nodrag nopan">
                   {/* Minimize button */}
                   <button
-                    className={`w-11 h-8 flex items-center justify-center ${prefersReducedMotion ? '' : 'transition-colors'} ${
+                    className={`w-8 h-8 flex items-center justify-center ${prefersReducedMotion ? '' : 'transition-colors'} ${
                       isHovered 
                         ? 'hover:bg-[#3a3a3a]' 
                         : ''
@@ -162,7 +167,7 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
                   {/* Maximize button */}
                   <button
                     onClick={() => data.onMaximize?.(id)}
-                    className={`w-11 h-8 flex items-center justify-center rounded ${prefersReducedMotion ? '' : 'transition-colors'} ${
+                    className={`w-8 h-8 flex items-center justify-center rounded ${prefersReducedMotion ? '' : 'transition-colors'} ${
                       isHovered 
                         ? 'hover:bg-[#3a3a3a] cursor-pointer' 
                         : 'cursor-default'
@@ -170,13 +175,13 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
                     aria-label="Maximize to fullscreen"
                     title="Maximize to fullscreen"
                   >
-                    <Maximize2 className="w-4 h-4 text-[#ececec]" />
+                    <Maximize2 className="w-3.5 h-3.5 text-[#ececec]" />
                   </button>
                   
                   {/* Close button */}
                   <button
                     onClick={() => data.onDelete?.(id)}
-                    className={`w-11 h-8 flex items-center justify-center rounded ${prefersReducedMotion ? '' : 'transition-colors'} ${
+                    className={`w-8 h-8 flex items-center justify-center rounded ${prefersReducedMotion ? '' : 'transition-colors'} ${
                       isHovered 
                         ? 'hover:bg-[#e81123]' 
                         : ''
@@ -184,7 +189,7 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
                     aria-label="Delete this node and all its children"
                     title="Delete this node and all its children"
                   >
-                    <X className="w-4 h-4 text-[#ececec]" />
+                    <X className="w-3.5 h-3.5 text-[#ececec]" />
                   </button>
                 </div>
               )}
@@ -192,37 +197,35 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
           )}
         </div>
         
-        <div className={`p-6 space-y-4 scrollbar-thin ${isLongContent ? 'flex-1 overflow-y-auto' : ''}`}>
-          <div 
-            className="nodrag nopan cursor-text select-text"
-            onPointerDown={preventReactFlowEvents}
-            onPointerUp={preventReactFlowEvents}
-            onPointerMove={preventReactFlowEvents}
-            onMouseDown={preventReactFlowEvents}
-            onMouseUp={preventReactFlowEvents}
-            onMouseMove={preventReactFlowEvents}
-            onClick={preventReactFlowEvents}
-            onDoubleClick={preventReactFlowEvents}
-          >
-            <div className="text-[18px] font-semibold text-[#ececec] whitespace-pre-wrap break-words leading-[1.4] cursor-text select-text" style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 213, 255, 0.1)' }}>
+        <div className={`p-6 space-y-4 scrollbar-thin nodrag nopan select-text cursor-text ${isLongContent ? 'flex-1 overflow-y-auto' : ''}`}>
+          <div className="nodrag nopan relative select-text cursor-text">
+            <div className="text-[18px] font-semibold text-[#ececec] whitespace-pre-wrap break-words leading-[1.4] select-text cursor-text" style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 213, 255, 0.1)' }}>
               {data.question}
             </div>
+            
+            {/* Copy button - aligned with bottom of question text */}
+            <button
+              onClick={handleCopyResponse}
+              className={`absolute right-0 bottom-0 p-1.5 rounded-md bg-[#2a2a2a] border border-[#4d4d4d] ${prefersReducedMotion ? '' : 'transition-all duration-200'} ${
+                isHovered 
+                  ? 'opacity-100 scale-100' 
+                  : 'opacity-0 scale-90 pointer-events-none'
+              } hover:bg-[#3a3a3a] hover:border-[#00D5FF]/50 nodrag nopan z-10`}
+              aria-label={isCopied ? 'Copied!' : 'Copy response'}
+              title={isCopied ? 'Copied!' : 'Copy response'}
+            >
+              {isCopied ? (
+                <Check className="w-3.5 h-3.5 text-[#28c840]" />
+              ) : (
+                <Copy className="w-3.5 h-3.5 text-[#ececec]" />
+              )}
+            </button>
           </div>
 
           <div className="border-t border-[#4d4d4d]"></div>
 
-          <div 
-            className="nodrag nopan cursor-text select-text"
-            onPointerDown={preventReactFlowEvents}
-            onPointerUp={preventReactFlowEvents}
-            onPointerMove={preventReactFlowEvents}
-            onMouseDown={preventReactFlowEvents}
-            onMouseUp={preventReactFlowEvents}
-            onMouseMove={preventReactFlowEvents}
-            onClick={preventReactFlowEvents}
-            onDoubleClick={preventReactFlowEvents}
-          >
-            <MarkdownContent content={data.response} className="text-[15px] text-[#ececec] leading-relaxed cursor-text select-text" />
+          <div className="nodrag nopan select-text cursor-text">
+            <MarkdownContent content={data.response} className="text-[15px] text-[#ececec] leading-relaxed select-text cursor-text" />
           </div>
         </div>
 

@@ -2,7 +2,7 @@
 
 import React, { useRef, useEffect, useState, useMemo, memo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { X, ArrowDown, Minimize2, Maximize2 } from 'lucide-react';
+import { X, ArrowDown, Minimize2, Maximize2, Copy, Check } from 'lucide-react';
 import MarkdownContent from '@/components/shared/MarkdownContent';
 import ChatInput from './ChatInput';
 
@@ -83,6 +83,8 @@ const MessagePair = memo(function MessagePair({
 }) {
   const [isRetrying, setIsRetrying] = React.useState(false);
   const [prefersReducedMotion, setPrefersReducedMotion] = React.useState(false);
+  const [isCopied, setIsCopied] = React.useState(false);
+  const [isResponseHovered, setIsResponseHovered] = React.useState(false);
   
   React.useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -103,6 +105,16 @@ const MessagePair = memo(function MessagePair({
       await onRetry(messageId);
     } finally {
       setIsRetrying(false);
+    }
+  };
+
+  const handleCopyResponse = async () => {
+    try {
+      await navigator.clipboard.writeText(answer);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy text:', err);
     }
   };
 
@@ -127,8 +139,33 @@ const MessagePair = memo(function MessagePair({
       <div className="border-t border-[#4d4d4d] mb-6"></div>
 
       {/* AI Response */}
-      <div className={isError ? 'text-red-400' : ''}>
+      <div 
+        className={`relative ${isError ? 'text-red-400' : ''}`}
+        onMouseEnter={() => setIsResponseHovered(true)}
+        onMouseLeave={() => setIsResponseHovered(false)}
+      >
         <MarkdownContent content={answer} className="text-[16px] leading-[1.7] text-[#ececec]" />
+        
+        {/* Copy button - appears on hover */}
+        {answer && (
+          <button
+            onClick={handleCopyResponse}
+            className={`absolute top-0 right-0 p-2 rounded-lg bg-[#2a2a2a] border border-[#4d4d4d] ${prefersReducedMotion ? '' : 'transition-all duration-200'} ${
+              isResponseHovered 
+                ? 'opacity-100 translate-y-0' 
+                : 'opacity-0 -translate-y-1 pointer-events-none'
+            } hover:bg-[#3a3a3a] hover:border-[#00D5FF]/50`}
+            aria-label={isCopied ? 'Copied!' : 'Copy response'}
+            title={isCopied ? 'Copied!' : 'Copy response'}
+          >
+            {isCopied ? (
+              <Check className="w-4 h-4 text-[#28c840]" />
+            ) : (
+              <Copy className="w-4 h-4 text-[#ececec]" />
+            )}
+          </button>
+        )}
+        
         {isError && onRetry && messageId && (
           <Button
             onClick={handleRetry}
@@ -157,7 +194,6 @@ export default function FullscreenChatView({
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const [userHasScrolled, setUserHasScrolled] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [isMac, setIsMac] = useState(false);
@@ -214,12 +250,8 @@ export default function FullscreenChatView({
     return (messages.length - visibleRange.end) * 100; // Estimated message height
   }, [messages.length, visibleRange.end, useVirtualScrolling]);
   
-  // Detect viewport size and motion preferences on mount
+  // Detect motion preferences on mount
   useEffect(() => {
-    const checkViewportSize = () => {
-      setIsMobile(window.innerWidth < 768); // Mobile breakpoint at 768px
-    };
-    
     // Check for reduced motion preference
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     setPrefersReducedMotion(mediaQuery.matches);
@@ -228,12 +260,9 @@ export default function FullscreenChatView({
       setPrefersReducedMotion(e.matches);
     };
     
-    checkViewportSize();
-    window.addEventListener('resize', checkViewportSize);
     mediaQuery.addEventListener('change', handleMotionChange);
     
     return () => {
-      window.removeEventListener('resize', checkViewportSize);
       mediaQuery.removeEventListener('change', handleMotionChange);
     };
   }, []);
@@ -269,25 +298,7 @@ export default function FullscreenChatView({
     return () => window.removeEventListener('resize', handleResize);
   }, [userHasScrolled, scrollToBottom]);
 
-  // Handle virtual keyboard on mobile - scroll to bottom when keyboard appears
-  useEffect(() => {
-    if (!isMobile) return;
 
-    const handleVisualViewportResize = () => {
-      // When virtual keyboard appears, the visual viewport shrinks
-      // Scroll to bottom to keep input visible
-      if (!userHasScrolled) {
-        setTimeout(() => scrollToBottom(false), 100);
-      }
-    };
-
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', handleVisualViewportResize);
-      return () => {
-        window.visualViewport?.removeEventListener('resize', handleVisualViewportResize);
-      };
-    }
-  }, [isMobile, userHasScrolled, scrollToBottom]);
 
   // Scroll to bottom on mount and when messages change
   useEffect(() => {
@@ -386,7 +397,7 @@ export default function FullscreenChatView({
       </div>
       
       {/* Header with OS-specific window controls */}
-      <div className={`${isMobile ? 'h-12' : 'h-14'} bg-[#2a2a2a] border-b border-[#4d4d4d] flex items-center ${isMobile ? 'px-4' : 'px-6'} ${!sidebarOpen && !isMobile ? 'pl-16' : ''} flex-shrink-0 ${!isMac ? 'justify-end' : ''}`}>
+      <div className={`h-14 bg-[#2a2a2a] border-b border-[#4d4d4d] flex items-center px-6 ${!sidebarOpen ? 'pl-16' : ''} flex-shrink-0 ${!isMac ? 'justify-end' : ''}`}>
         {isMac ? (
           /* macOS window controls - left side */
           <div className="flex gap-2 nodrag nopan">
@@ -481,7 +492,7 @@ export default function FullscreenChatView({
       <div
         ref={messagesContainerRef}
         onScroll={handleScroll}
-        className={`flex-1 overflow-y-auto ${isMobile ? 'px-4 py-4' : 'px-6 py-6'} relative`}
+        className="flex-1 overflow-y-auto px-6 py-6 relative"
         style={{ 
           willChange: 'scroll-position'
         }}
@@ -489,7 +500,7 @@ export default function FullscreenChatView({
         aria-live="polite"
         aria-label="Chat messages"
       >
-        <div className={`${isMobile ? 'max-w-full' : 'max-w-4xl'} mx-auto`}>
+        <div className="max-w-4xl mx-auto">
           {/* Virtual scrolling: Add spacer for messages above viewport */}
           {useVirtualScrolling && topOffset > 0 && (
             <div style={{ height: `${topOffset}px` }} />
@@ -560,11 +571,11 @@ export default function FullscreenChatView({
         >
           <Button
             onClick={scrollToBottomManually}
-            className={`${isMobile ? 'h-10 w-10' : 'h-9 w-9'} p-0 rounded-full bg-[#3a3a3a] hover:bg-[#4a4a4a] text-[#ececec] shadow-lg border border-[#565656] pointer-events-auto ${prefersReducedMotion ? '' : 'transition-all duration-200 hover:scale-110'}`}
+            className={`h-9 w-9 p-0 rounded-full bg-[#3a3a3a] hover:bg-[#4a4a4a] text-[#ececec] shadow-lg border border-[#565656] pointer-events-auto ${prefersReducedMotion ? '' : 'transition-all duration-200 hover:scale-110'}`}
             aria-label="Scroll to bottom of chat"
             title="Scroll to bottom"
           >
-            <ArrowDown className={`${isMobile ? 'w-5 h-5' : 'w-4 h-4'}`} />
+            <ArrowDown className="w-4 h-4" />
           </Button>
         </div>
       </div>

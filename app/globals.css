@@ -213,14 +213,6 @@ html {
   outline-offset: 2px;
 }
 
-/* Improve tap targets on mobile */
-@media (max-width: 768px) {
-  button, a, input, textarea, select {
-    min-height: 44px;
-    min-width: 44px;
-  }
-}
-
 /* Prevent layout shift during font loading */
 .font-loading {
   visibility: hidden;

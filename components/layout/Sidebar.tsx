@@ -103,15 +103,15 @@ export default function Sidebar({
       {/* Sidebar */}
       <div
         className={`fixed top-0 left-0 h-full bg-[#171717] transition-all duration-300 z-40 flex flex-col ${
-          isOpen ? 'w-full sm:w-80 md:w-64' : 'w-0'
+          isOpen ? 'w-64' : 'w-0'
         } overflow-hidden`}
       >
         {/* Header with logo and toggle button */}
-        <div className="p-3 sm:p-4 flex-shrink-0">
+        <div className="p-4 flex-shrink-0">
           <div className="flex items-center justify-between mb-4 gap-2">
-            <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
               <div 
-                className="relative w-7 h-7 sm:w-8 sm:h-8 cursor-pointer group transition-all duration-500 flex-shrink-0"
+                className="relative w-8 h-8 cursor-pointer group transition-all duration-500 flex-shrink-0"
                 style={{
                   filter: logoHovered ? 'drop-shadow(0 12px 40px rgba(0, 213, 255, 0.5))' : 'drop-shadow(0 0 0 transparent)',
                   transition: 'filter 0.5s ease'
@@ -139,7 +139,7 @@ export default function Sidebar({
               </div>
               <div className="flex items-center gap-1.5 min-w-0">
                 <h1 
-                  className="text-lg sm:text-xl font-bold tracking-tight" 
+                  className="text-xl font-bold tracking-tight" 
                   style={{ 
                     fontFamily: '"Montserrat", sans-serif', 
                     fontWeight: 700, 
@@ -162,7 +162,7 @@ export default function Sidebar({
               className="bg-transparent hover:bg-[#212121] text-[#ececec] rounded-lg p-2 border-0 flex-shrink-0 touch-manipulation"
               size="sm"
             >
-              <PanelLeftClose className="w-5 h-5 sm:w-6 sm:h-6" />
+              <PanelLeftClose className="w-6 h-6" />
             </Button>
           </div>
           {isSearching ? (
@@ -186,7 +186,7 @@ export default function Sidebar({
             <div className="flex gap-2">
               <button
                 onClick={handleNewCanvasClick}
-                className="flex-1 bg-[#2a2a2a] text-[#ececec] rounded-lg font-normal text-sm sm:text-base border border-[#4a4a4a] h-11 sm:h-12 whitespace-nowrap overflow-hidden shadow-md transition-all duration-200 flex items-center hover:border-[#00D5FF]/50 hover:shadow-md hover:shadow-[#00D5FF]/20 hover:-translate-y-[2px] relative pl-4 touch-manipulation"
+                className="flex-1 bg-[#2a2a2a] text-[#ececec] rounded-lg font-normal text-base border border-[#4a4a4a] h-12 whitespace-nowrap overflow-hidden shadow-md transition-all duration-200 flex items-center hover:border-[#00D5FF]/50 hover:shadow-md hover:shadow-[#00D5FF]/20 hover:-translate-y-[2px] relative pl-4 touch-manipulation"
                 style={{ background: 'rgba(42, 42, 42, 0.8)' }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = 'linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(96, 165, 250, 0.2))';
@@ -200,7 +200,7 @@ export default function Sidebar({
               </button>
               <button
                 onClick={handleToggleSearch}
-                className="flex-shrink-0 bg-[#2a2a2a] text-[#ececec] rounded-lg border border-[#4a4a4a] h-11 w-11 sm:h-12 sm:w-12 shadow-md transition-all duration-200 flex items-center justify-center hover:border-[#00D5FF]/50 hover:shadow-md hover:shadow-[#00D5FF]/20 hover:-translate-y-[2px] touch-manipulation"
+                className="flex-shrink-0 bg-[#2a2a2a] text-[#ececec] rounded-lg border border-[#4a4a4a] h-12 w-12 shadow-md transition-all duration-200 flex items-center justify-center hover:border-[#00D5FF]/50 hover:shadow-md hover:shadow-[#00D5FF]/20 hover:-translate-y-[2px] touch-manipulation"
                 style={{ background: 'rgba(42, 42, 42, 0.8)' }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = 'linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(96, 165, 250, 0.2))';
@@ -356,14 +356,7 @@ export default function Sidebar({
         </Button>
       )}
 
-      {/* Overlay for when sidebar is open on mobile */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-30 md:hidden"
-          onClick={onToggle}
-          aria-label="Close sidebar"
-        />
-      )}
+      {/* Overlay removed - sidebar now behaves consistently at all window sizes */}
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

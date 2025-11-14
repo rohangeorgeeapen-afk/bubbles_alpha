@@ -31,7 +31,13 @@ export default function CanvasManager() {
 
   // Check for mobile and show warning
   useEffect(() => {
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
+    // Only detect actual mobile devices, not just small windows
+    const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    const isSmallScreen = window.innerWidth < 768 && window.innerHeight < 1024;
+    
+    // Only show warning if it's actually a mobile device (has touch + small screen + mobile UA)
+    const isMobile = isMobileDevice && isTouchDevice && isSmallScreen;
     const hasSeenWarning = localStorage.getItem('mobile-warning-dismissed');
     
     if (isMobile && !hasSeenWarning) {
@@ -847,7 +853,7 @@ export default function CanvasManager() {
         onSignOut={handleSignOut}
       />
 
-      <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'md:ml-64 ml-0' : 'ml-0'}`}>
+      <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-0'}`}>
         {hasInitialized && typeof window !== 'undefined' && (
           <ConversationCanvas
             key={currentCanvasId || 'empty-canvas'}
