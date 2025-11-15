@@ -199,7 +199,7 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
         
         <div className={`p-6 space-y-4 scrollbar-thin nodrag nopan select-text cursor-text ${isLongContent ? 'flex-1 overflow-y-auto' : ''}`}>
           <div className="nodrag nopan select-text cursor-text">
-            <div className="text-[18px] font-extrabold text-[#ececec] whitespace-pre-wrap break-words leading-[1.4] select-text cursor-text" style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 213, 255, 0.1)' }}>
+            <div className="text-[18px] font-semibold text-[#ececec] whitespace-pre-wrap break-words leading-[1.4] select-text cursor-text" style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 213, 255, 0.1)' }}>
               {data.question}
             </div>
           </div>
@@ -207,7 +207,7 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
           <div className="border-t border-[#4d4d4d]"></div>
 
           <div className="nodrag nopan select-text cursor-text">
-            <MarkdownContent content={data.response} className="text-[15px] text-[#ececec] leading-relaxed select-text cursor-text font-semibold" />
+            <MarkdownContent content={data.response} className="text-[15px] text-[#ececec] leading-relaxed select-text cursor-text" />
             
             {/* Copy button - one line below response */}
             <div className="flex justify-end mt-2">
