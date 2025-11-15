@@ -198,34 +198,36 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
         </div>
         
         <div className={`p-6 space-y-4 scrollbar-thin nodrag nopan select-text cursor-text ${isLongContent ? 'flex-1 overflow-y-auto' : ''}`}>
-          <div className="nodrag nopan relative select-text cursor-text">
-            <div className="text-[18px] font-semibold text-[#ececec] whitespace-pre-wrap break-words leading-[1.4] select-text cursor-text" style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 213, 255, 0.1)' }}>
+          <div className="nodrag nopan select-text cursor-text">
+            <div className="text-[18px] font-extrabold text-[#ececec] whitespace-pre-wrap break-words leading-[1.4] select-text cursor-text" style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 213, 255, 0.1)' }}>
               {data.question}
             </div>
-            
-            {/* Copy button - aligned with bottom of question text */}
-            <button
-              onClick={handleCopyResponse}
-              className={`absolute right-0 bottom-0 p-1.5 rounded-md bg-[#2a2a2a] border border-[#4d4d4d] ${prefersReducedMotion ? '' : 'transition-all duration-200'} ${
-                isHovered 
-                  ? 'opacity-100 scale-100' 
-                  : 'opacity-0 scale-90 pointer-events-none'
-              } hover:bg-[#3a3a3a] hover:border-[#00D5FF]/50 nodrag nopan z-10`}
-              aria-label={isCopied ? 'Copied!' : 'Copy response'}
-              title={isCopied ? 'Copied!' : 'Copy response'}
-            >
-              {isCopied ? (
-                <Check className="w-3.5 h-3.5 text-[#28c840]" />
-              ) : (
-                <Copy className="w-3.5 h-3.5 text-[#ececec]" />
-              )}
-            </button>
           </div>
 
           <div className="border-t border-[#4d4d4d]"></div>
 
           <div className="nodrag nopan select-text cursor-text">
-            <MarkdownContent content={data.response} className="text-[15px] text-[#ececec] leading-relaxed select-text cursor-text" />
+            <MarkdownContent content={data.response} className="text-[15px] text-[#ececec] leading-relaxed select-text cursor-text font-semibold" />
+            
+            {/* Copy button - one line below response */}
+            <div className="flex justify-end mt-2">
+              <button
+                onClick={handleCopyResponse}
+                className={`p-1.5 rounded-md bg-[#2a2a2a] border border-[#4d4d4d] ${prefersReducedMotion ? '' : 'transition-all duration-200'} ${
+                  isHovered 
+                    ? 'opacity-100 scale-100' 
+                    : 'opacity-0 scale-90 pointer-events-none'
+                } hover:bg-[#3a3a3a] hover:border-[#00D5FF]/50 nodrag nopan`}
+                aria-label={isCopied ? 'Copied!' : 'Copy response'}
+                title={isCopied ? 'Copied!' : 'Copy response'}
+              >
+                {isCopied ? (
+                  <Check className="w-3.5 h-3.5 text-[#28c840]" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5 text-[#ececec]" />
+                )}
+              </button>
+            </div>
           </div>
         </div>
 
