@@ -52,7 +52,7 @@
     --text-primary: 210 25% 96%;     /* #f3f5f7 - headings, important */
     --text-secondary: 215 18% 75%;   /* #b4bcc9 - body text */
     --text-tertiary: 218 14% 55%;    /* #7d8694 - labels, hints */
-    --text-disabled: 220 12% 40%;    /* #5a6270 - inactive */
+    --text-disabled: 220 12% 45%;    /* #6b7280 - inactive, still readable */
     
     /* ACTION COLORS - Cyan for primary actions ONLY */
     --action-primary: 199 89% 48%;       /* #0ea5e9 - main CTA */
@@ -242,12 +242,13 @@ code {
 }
 
 .react-flow__minimap-mask {
-  fill: hsla(var(--action-primary), 0.08) !important;
+  fill: rgba(13, 17, 23, 0.6) !important;
 }
 
 .react-flow__minimap-node {
-  fill: hsl(var(--elevated)) !important;
-  stroke: hsl(var(--border-default)) !important;
+  fill: hsl(215, 20%, 65%) !important;
+  stroke: hsl(215, 15%, 45%) !important;
+  stroke-width: 1px !important;
 }
 
 /* Mobile */

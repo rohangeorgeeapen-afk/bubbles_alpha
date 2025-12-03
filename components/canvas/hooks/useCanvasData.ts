@@ -70,15 +70,49 @@ export function useCanvasData({ userId, onAuthError }: UseCanvasDataOptions) {
               node && typeof node === 'object' && node.id && node.type
             );
             
-            const validEdges = edges.filter((edge: any) => 
-              edge && typeof edge === 'object' && edge.id && edge.source && edge.target
-            );
+            // Fix stuck streaming nodes (nodes that were saved mid-stream)
+            const fixedNodes = validNodes.map((node: any) => {
+              if (node.data?.isStreaming) {
+                console.warn(`⚠️ Fixing stuck streaming node: ${node.id}`);
+                return {
+                  ...node,
+                  data: {
+                    ...node.data,
+                    isStreaming: false,
+                    // If no response, add a placeholder
+                    response: node.data.response || 'Response was interrupted. Please try again.',
+                  }
+                };
+              }
+              return node;
+            });
+            
+            // Get set of valid node IDs for edge validation
+            const validNodeIds = new Set(fixedNodes.map((n: any) => n.id));
+            
+            // Filter edges: must have valid structure AND reference existing nodes
+            const validEdges = edges.filter((edge: any) => {
+              if (!edge || typeof edge !== 'object' || !edge.id || !edge.source || !edge.target) {
+                return false;
+              }
+              // Ensure both source and target nodes exist
+              if (!validNodeIds.has(edge.source) || !validNodeIds.has(edge.target)) {
+                console.warn(`⚠️ Removing orphaned edge: ${edge.id} (${edge.source} -> ${edge.target})`);
+                return false;
+              }
+              // Prevent self-referencing edges
+              if (edge.source === edge.target) {
+                console.warn(`⚠️ Removing self-referencing edge: ${edge.id}`);
+                return false;
+              }
+              return true;
+            });
             
             formattedCanvases.push({
               id: canvas.id,
               name: canvas.name,
               createdAt: canvas.created_at,
-              nodes: validNodes,
+              nodes: fixedNodes,
               edges: validEdges,
             });
           } catch {

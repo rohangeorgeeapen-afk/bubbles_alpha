@@ -3,12 +3,15 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 
+// Logo hover state needs to be in the component
+
 interface LandingPageProps {
   onGetStarted: () => void;
 }
 
 export default function LandingPage({ onGetStarted }: LandingPageProps) {
   const [showScrollIndicator, setShowScrollIndicator] = useState(false);
+  const [logoHovered, setLogoHovered] = useState(false);
 
   useEffect(() => {
     setShowScrollIndicator(true);
@@ -34,6 +37,12 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
             {/* Logo */}
             <div 
               className="relative w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 mb-6 cursor-pointer group"
+              style={{
+                filter: logoHovered ? 'drop-shadow(0 12px 40px rgba(0, 213, 255, 0.5))' : 'drop-shadow(0 0 0 transparent)',
+                transition: 'filter 0.5s ease'
+              }}
+              onMouseEnter={() => setLogoHovered(true)}
+              onMouseLeave={() => setLogoHovered(false)}
               onClick={(e) => {
                 const img = e.currentTarget.querySelector('img');
                 if (img) {
@@ -42,24 +51,35 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
                 }
               }}
             >
-              <Image 
+              <img 
                 src="/logo.png" 
                 alt="Bubbles Logo"
-                width={160}
-                height={160}
-                className="w-full h-full object-contain transition-all duration-500 ease-out group-hover:scale-110"
-                style={{ transition: 'transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), rotate 1s ease' }}
-                priority
+                className="w-full h-full object-contain transition-all duration-500 ease-out"
+                style={{ 
+                  background: 'transparent',
+                  transition: 'transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), rotate 1s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+                  transform: logoHovered ? 'scale(1.15)' : 'scale(1)'
+                }}
               />
             </div>
             
             <div className="flex items-center justify-center gap-3">
-              <h1 className="text-4xl sm:text-5xl md:text-7xl font-semibold tracking-tight leading-none text-center text-text-primary">
+              <h1 
+                className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight leading-none text-center"
+                style={{ 
+                  fontFamily: 'Helvetica, Arial, sans-serif', 
+                  fontWeight: 700, 
+                  backgroundImage: 'linear-gradient(to bottom, #ffffff 30%, #e0f2fe 70%)',
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  color: 'transparent',
+                  WebkitTextFillColor: 'transparent'
+                }}
+              >
                 bubbles
               </h1>
-              {/* Beta badge - info semantic color */}
-              <span className="text-xs sm:text-sm font-medium px-2.5 py-1 bg-info-muted text-info rounded border border-info/30 uppercase tracking-wider">
-                Beta
+              <span className="text-xs sm:text-sm font-semibold px-2.5 py-1 bg-[#00D5FF]/20 text-[#00D5FF] rounded border border-[#00D5FF]/30 uppercase tracking-wider">
+                BETA
               </span>
             </div>
           </div>
@@ -204,7 +224,7 @@ function HowItWorksSection({ onGetStarted }: { onGetStarted: () => void }) {
       <div className="text-center">
         <p className="text-text-secondary text-base sm:text-lg mb-6">Ready to think differently?</p>
         <CTAButton onClick={onGetStarted}>Start Exploring</CTAButton>
-        <p className="text-text-disabled text-xs sm:text-sm mt-4 tracking-wide">Free to use • No credit card required</p>
+        <p className="text-text-tertiary text-xs sm:text-sm mt-4 tracking-wide">Free to use • No credit card required</p>
       </div>
     </section>
   );
@@ -214,7 +234,7 @@ function Footer() {
   return (
     <footer className="max-w-6xl mx-auto px-4 sm:px-6 md:px-8 py-8 border-t border-border-subtle">
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-        <p className="text-text-disabled text-xs sm:text-sm font-mono">© 2025 Bubbles</p>
+        <p className="text-text-tertiary text-xs sm:text-sm font-mono">© 2025 Bubbles</p>
         <div className="flex items-center gap-6">
           {/* Links use text-tertiary, hover to text-secondary - subtle but accessible */}
           <a href="/privacy" className="text-text-tertiary hover:text-text-secondary transition-colors text-xs sm:text-sm">

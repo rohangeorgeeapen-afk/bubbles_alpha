@@ -498,69 +498,101 @@ function ConversationCanvasInner({
 
   // Delete node and all its descendants
   const handleDeleteNode = useCallback((nodeId: string) => {
-    // Save current state for undo
-    setDeletedState({
-      nodes: nodesRef.current,
-      edges: edgesRef.current,
-    });
-    
-    // Find all descendant nodes recursively
-    const findDescendants = (id: string, currentEdges: Edge[]): string[] => {
-      const childEdges = currentEdges.filter(e => e.source === id);
-      const childIds = childEdges.map(e => e.target);
-      const allDescendants = [...childIds];
+    try {
+      // Get current state from refs (most up-to-date)
+      const currentNodes = nodesRef.current;
+      const currentEdges = edgesRef.current;
       
-      // Recursively find descendants of children
-      childIds.forEach(childId => {
-        allDescendants.push(...findDescendants(childId, currentEdges));
+      // Verify the node exists before attempting delete
+      const nodeToDelete = currentNodes.find(n => n.id === nodeId);
+      if (!nodeToDelete) {
+        console.warn('⚠️ Node to delete not found:', nodeId);
+        return;
+      }
+      
+      // Save current state for undo
+      setDeletedState({
+        nodes: currentNodes,
+        edges: currentEdges,
       });
       
-      return allDescendants;
-    };
-    
-    // Get all nodes to delete (the node itself + all descendants)
-    const nodesToDelete = [nodeId, ...findDescendants(nodeId, edgesRef.current)];
-    
-    // Remove edges connected to deleted nodes first
-    const updatedEdges = edgesRef.current.filter(e => 
-      !nodesToDelete.includes(e.source) && !nodesToDelete.includes(e.target)
-    );
-    
-    // Remove nodes and recalculate layout
-    const remainingNodes = nodesRef.current.filter(n => !nodesToDelete.includes(n.id));
-    
-    // Recalculate layout for remaining nodes
-    const { nodes: layoutedNodes } = getLayoutedElements(remainingNodes, updatedEdges);
-    
-    // Update nodes with callbacks
-    const nodesWithCallbacks = layoutedNodes.map(node => ({
-      ...node,
-      data: {
-        ...node.data,
-        onAddFollowUp: async (nodeId: string, q: string) => {
-          await createConversationNodeRef.current(q, nodeId);
-        },
-        onDelete: (nodeId: string) => handleDeleteNodeRef.current(nodeId),
-        onMaximize: (nodeId: string) => enterFullscreenModeRef.current(nodeId),
+      // Find all descendant nodes recursively with cycle protection
+      const findDescendants = (id: string, edges: Edge[], visited: Set<string> = new Set()): string[] => {
+        if (visited.has(id)) {
+          console.warn('⚠️ Cycle detected during delete, breaking at:', id);
+          return [];
+        }
+        visited.add(id);
+        
+        const childEdges = edges.filter(e => e.source === id);
+        const childIds = childEdges.map(e => e.target);
+        const allDescendants = [...childIds];
+        
+        // Recursively find descendants of children
+        childIds.forEach(childId => {
+          allDescendants.push(...findDescendants(childId, edges, visited));
+        });
+        
+        return allDescendants;
+      };
+      
+      // Get all nodes to delete (the node itself + all descendants)
+      const nodesToDelete = new Set([nodeId, ...findDescendants(nodeId, currentEdges)]);
+      
+      // Remove edges connected to deleted nodes
+      const updatedEdges = currentEdges.filter(e => 
+        !nodesToDelete.has(e.source) && !nodesToDelete.has(e.target)
+      );
+      
+      // Also remove any orphaned edges (edges pointing to non-existent nodes)
+      const remainingNodeIds = new Set(
+        currentNodes.filter(n => !nodesToDelete.has(n.id)).map(n => n.id)
+      );
+      const cleanedEdges = updatedEdges.filter(e => 
+        remainingNodeIds.has(e.source) && remainingNodeIds.has(e.target)
+      );
+      
+      // Remove nodes
+      const remainingNodes = currentNodes.filter(n => !nodesToDelete.has(n.id));
+      
+      // Recalculate layout for remaining nodes
+      const { nodes: layoutedNodes } = getLayoutedElements(remainingNodes, cleanedEdges);
+      
+      // Update nodes with callbacks
+      const nodesWithCallbacks = layoutedNodes.map(node => ({
+        ...node,
+        data: {
+          ...node.data,
+          onAddFollowUp: async (nId: string, q: string) => {
+            await createConversationNodeRef.current(q, nId);
+          },
+          onDelete: (nId: string) => handleDeleteNodeRef.current(nId),
+          onMaximize: (nId: string) => enterFullscreenModeRef.current(nId),
+        }
+      }));
+      
+      setNodes(nodesWithCallbacks);
+      setEdges(cleanedEdges);
+      
+      // Show undo toast
+      setShowUndoToast(true);
+      
+      // Clear any existing timeout
+      if (undoTimeoutRef.current) {
+        clearTimeout(undoTimeoutRef.current);
       }
-    }));
-    
-    setNodes(nodesWithCallbacks);
-    setEdges(updatedEdges);
-    
-    // Show undo toast
-    setShowUndoToast(true);
-    
-    // Clear any existing timeout
-    if (undoTimeoutRef.current) {
-      clearTimeout(undoTimeoutRef.current);
+      
+      // Hide toast after 5 seconds
+      undoTimeoutRef.current = setTimeout(() => {
+        setShowUndoToast(false);
+        setDeletedState(null);
+      }, 5000);
+    } catch (error) {
+      console.error('[Delete Node Error]', error);
+      // Still try to remove the node even if there's an error
+      setNodes(prev => prev.filter(n => n.id !== nodeId));
+      setEdges(prev => prev.filter(e => e.source !== nodeId && e.target !== nodeId));
     }
-    
-    // Hide toast after 5 seconds
-    undoTimeoutRef.current = setTimeout(() => {
-      setShowUndoToast(false);
-      setDeletedState(null);
-    }, 5000);
   }, [setNodes, setEdges]);
 
   // Keep callback refs updated to avoid stale closures
@@ -598,14 +630,29 @@ function ConversationCanvasInner({
       
       console.log('🔧 Creating node in background:', { nodeId, parentId, question: question.substring(0, 50) });
       
-      // Verify parent node exists
-      const parentNode = nodesRef.current.find(n => n.id === parentId);
+      // Use refs to get the most current state (avoid stale closure issues)
+      const currentNodes = nodesRef.current;
+      const currentEdges = edgesRef.current;
+      
+      // Verify parent node exists in current state
+      const parentNode = currentNodes.find(n => n.id === parentId);
       if (!parentNode) {
         console.error('❌ Parent node not found:', parentId);
-        console.log('Available nodes:', nodesRef.current.map(n => n.id));
+        console.log('Available nodes:', currentNodes.map(n => n.id));
         return;
       }
       console.log('✅ Parent node found:', { id: parentNode.id, position: parentNode.position });
+      
+      // Check if this node already exists (prevent duplicates from race conditions)
+      const existingNode = currentNodes.find(n => 
+        n.data?.question === question && 
+        n.data?.response === aiResponse &&
+        currentEdges.some(e => e.source === parentId && e.target === n.id)
+      );
+      if (existingNode) {
+        console.warn('⚠️ Node already exists, skipping duplicate creation');
+        return;
+      }
       
       // Create conversation node
       const conversationNode: Node<ConversationNodeData> = {
@@ -616,57 +663,48 @@ function ConversationCanvasInner({
           question,
           response: aiResponse,
           timestamp,
-          onAddFollowUp: async (nodeId: string, q: string) => {
-            await createConversationNodeRef.current(q, nodeId);
+          onAddFollowUp: async (nId: string, q: string) => {
+            await createConversationNodeRef.current(q, nId);
           },
-          onDelete: (nodeId: string) => handleDeleteNodeRef.current(nodeId),
-          onMaximize: (nodeId: string) => enterFullscreenModeRef.current(nodeId),
+          onDelete: (nId: string) => handleDeleteNodeRef.current(nId),
+          onMaximize: (nId: string) => enterFullscreenModeRef.current(nId),
           positioned: false,
         },
       };
       
-      // Update edges and nodes together to ensure layout has correct edge information
-      let updatedNodes: Node[] = [];
+      // Create the new edge
+      const newEdge = { id: `${parentId}-${nodeId}`, source: parentId, target: nodeId };
       
-      setEdges((currentEdges) => {
-        const newEdges = [...currentEdges];
-        newEdges.push({ id: `${parentId}-${nodeId}`, source: parentId, target: nodeId });
-        
-        // Update nodes with the new edge information
-        setNodes((currentNodes) => {
-          const newNodes = [...currentNodes, conversationNode];
-          
-          // Run layout algorithm with the updated edges
-          const { nodes: layoutedNodes } = getLayoutedElements(newNodes, newEdges);
-          
-          // Update all nodes to have the callbacks
-          const nodesWithCallback = layoutedNodes.map(node => ({
-            ...node,
-            data: {
-              ...node.data,
-              onAddFollowUp: async (nodeId: string, q: string) => {
-                await createConversationNodeRef.current(q, nodeId);
-              },
-              onDelete: (nodeId: string) => handleDeleteNodeRef.current(nodeId),
-              onMaximize: (nodeId: string) => enterFullscreenModeRef.current(nodeId),
-            }
-          }));
-          
-          console.log('✅ Node created in background, layout updated');
-          console.log('📍 New node position:', nodesWithCallback.find(n => n.id === nodeId)?.position);
-          
-          updatedNodes = nodesWithCallback;
-          return nodesWithCallback;
-        });
-        
-        return newEdges;
-      });
+      // Build new arrays first (avoid nested setState)
+      const newNodes = [...currentNodes, conversationNode];
+      const newEdges = [...currentEdges, newEdge];
+      
+      // Run layout algorithm
+      const { nodes: layoutedNodes } = getLayoutedElements(newNodes, newEdges);
+      
+      // Update all nodes to have the callbacks
+      const nodesWithCallback = layoutedNodes.map(node => ({
+        ...node,
+        data: {
+          ...node.data,
+          onAddFollowUp: async (nId: string, q: string) => {
+            await createConversationNodeRef.current(q, nId);
+          },
+          onDelete: (nId: string) => handleDeleteNodeRef.current(nId),
+          onMaximize: (nId: string) => enterFullscreenModeRef.current(nId),
+        }
+      }));
+      
+      console.log('✅ Node created in background, layout updated');
+      console.log('📍 New node position:', nodesWithCallback.find(n => n.id === nodeId)?.position);
+      
+      // Update state atomically (not nested)
+      setNodes(nodesWithCallback);
+      setEdges(newEdges);
       
       // Update active node ID to newly created node
-      // Don't rebuild the conversation thread here - it's already correct from handleFullscreenMessage
       setFullscreenState(prev => {
         console.log('✅ Active node updated to:', nodeId);
-        
         return {
           ...prev,
           activeNodeId: nodeId,
@@ -1052,13 +1090,13 @@ function ConversationCanvasInner({
             />
 
             <MiniMap 
-              className="!bg-[hsl(222,47%,6%)] !border-[hsl(222,30%,18%)] !rounded-lg !shadow-2xl !overflow-hidden backdrop-blur-sm" 
-              maskColor="rgba(10, 15, 26, 0.85)"
-              nodeColor="hsl(222, 47%, 12%)"
-              nodeStrokeColor="hsl(222, 30%, 20%)"
+              className="!bg-[hsl(223,28%,10%)] !border-[hsl(220,18%,22%)] !rounded-lg !shadow-2xl !overflow-hidden backdrop-blur-sm" 
+              maskColor="rgba(13, 17, 23, 0.6)"
+              nodeColor="hsl(215, 20%, 65%)"
+              nodeStrokeColor="hsl(215, 15%, 45%)"
               nodeBorderRadius={6}
-              maskStrokeColor="hsl(222, 30%, 25%)"
-              maskStrokeWidth={2}
+              maskStrokeColor="hsl(220, 18%, 35%)"
+              maskStrokeWidth={1}
             />
           </>
         )}
