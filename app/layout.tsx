@@ -1,13 +1,13 @@
 import './globals.css';
 import type { Metadata } from 'next';
-import { Montserrat } from 'next/font/google';
+import { Inter } from 'next/font/google';
 import { AuthProvider } from '@/lib/contexts/auth-context';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
-const montserrat = Montserrat({
+const inter = Inter({
   subsets: ['latin'],
-  weight: ['300', '400', '600', '700'],
-  variable: '--font-montserrat',
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-inter',
   display: 'swap',
 });
 
@@ -30,10 +30,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={montserrat.variable}>
+    <html lang="en" className={inter.variable}>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
-        <meta name="theme-color" content="#212121" />
+        <meta name="theme-color" content="#0a0f1a" />
       </head>
       <body>
         <ErrorBoundary>

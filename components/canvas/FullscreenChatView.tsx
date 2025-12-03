@@ -226,108 +226,44 @@ export default function FullscreenChatView({
 
   return (
     <div 
-      className="absolute inset-0 z-50 bg-[#212121] flex flex-col"
+      className="absolute inset-0 z-50 bg-base flex flex-col"
       role="dialog"
       aria-label="Maximized chat conversation"
       aria-modal="true"
     >
       {/* Screen reader announcements */}
-      <div 
-        role="status" 
-        aria-live="polite" 
-        aria-atomic="true"
-        className="sr-only"
-      >
-        {announcement}
-      </div>
+      <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">{announcement}</div>
       
-      {/* Header with OS-specific window controls */}
-      <div className={`h-14 bg-[#2a2a2a] border-b border-[#4d4d4d] flex items-center px-6 ${!sidebarOpen ? 'pl-16' : ''} flex-shrink-0 ${!isMac ? 'justify-end' : ''}`}>
+      {/* Header */}
+      <div className={`h-14 bg-void border-b border-border-subtle flex items-center px-6 ${!sidebarOpen ? 'pl-16' : ''} flex-shrink-0 ${!isMac ? 'justify-end' : ''}`}>
         {isMac ? (
-          /* macOS window controls - left side */
           <div className="flex gap-2 nodrag nopan">
-            {/* Red button - Disabled/Greyed out */}
-            <button
-              disabled
-              className="w-3 h-3 rounded-full bg-[#5a5a5a] cursor-default"
-              aria-label="Close (disabled)"
-              aria-hidden="true"
-              title="Close (disabled)"
-            >
-            </button>
-            
-            {/* Yellow button - Disabled/Greyed out */}
-            <button
-              disabled
-              className="w-3 h-3 rounded-full bg-[#5a5a5a] cursor-default"
-              aria-label="Minimize (disabled)"
-              aria-hidden="true"
-              title="Minimize (disabled)"
-            >
-            </button>
-            
-            {/* Green button - Restore to node (only functional button) */}
+            <button disabled className="w-3 h-3 rounded-full bg-border-strong cursor-default" aria-hidden="true" />
+            <button disabled className="w-3 h-3 rounded-full bg-border-strong cursor-default" aria-hidden="true" />
             <button
               onClick={onClose}
               disabled={isTransitioning}
-              className={`w-3 h-3 rounded-full ${prefersReducedMotion ? '' : 'transition-all duration-200'} group relative ${
-                isTransitioning
-                  ? 'bg-[#5a5a5a] cursor-not-allowed'
-                  : 'bg-[#28c840] hover:bg-[#20a034] cursor-pointer'
-              }`}
+              className={`w-3 h-3 rounded-full transition-colors group relative ${isTransitioning ? 'bg-border-strong cursor-not-allowed' : 'bg-success hover:bg-success/80 cursor-pointer'}`}
               aria-label="Minimize to node view"
               title="Minimize (Esc)"
             >
               {!isTransitioning && (
                 <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <svg width="8" height="8" viewBox="0 0 8 8" fill="none" className="text-[#004a00]">
-                    <path d="M1 3.5L3.5 3.5L3.5 1M7 4.5L4.5 4.5L4.5 7" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M1 3.5L3.5 1M7 4.5L4.5 7" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
-                  </svg>
+                  <Minimize2 className="w-2 h-2 text-void" />
                 </span>
               )}
             </button>
           </div>
         ) : (
-          /* Windows window controls - right side */
           <div className="flex nodrag nopan">
-            {/* Minimize button - Disabled/Greyed out */}
-            <button
-              disabled
-              className="w-11 h-8 flex items-center justify-center cursor-default opacity-40"
-              aria-label="Minimize (disabled)"
-              aria-hidden="true"
-              title="Minimize (disabled)"
-            >
-              <svg width="10" height="1" viewBox="0 0 10 1" className="text-[#ececec]">
-                <rect width="10" height="1" fill="currentColor"/>
-              </svg>
+            <button disabled className="w-11 h-8 flex items-center justify-center cursor-default opacity-40" aria-hidden="true">
+              <div className="w-2.5 h-0.5 bg-text-tertiary" />
             </button>
-            
-            {/* Restore button - Only functional button */}
-            <button
-              onClick={onClose}
-              disabled={isTransitioning}
-              className={`w-11 h-8 flex items-center justify-center rounded ${prefersReducedMotion ? '' : 'transition-colors'} ${
-                isTransitioning
-                  ? 'cursor-not-allowed opacity-40'
-                  : 'hover:bg-[#3a3a3a] cursor-pointer'
-              }`}
-              aria-label="Restore to node view"
-              title="Restore (Esc)"
-            >
-              <Minimize2 className="w-4 h-4 text-[#ececec]" />
+            <button onClick={onClose} disabled={isTransitioning} className={`w-11 h-8 flex items-center justify-center rounded transition-colors ${isTransitioning ? 'cursor-not-allowed opacity-40' : 'hover:bg-elevated cursor-pointer'}`} aria-label="Restore" title="Restore (Esc)">
+              <Minimize2 className="w-4 h-4 text-text-secondary" />
             </button>
-            
-            {/* Close button - Disabled/Greyed out */}
-            <button
-              disabled
-              className="w-11 h-8 flex items-center justify-center cursor-default opacity-40"
-              aria-label="Close (disabled)"
-              aria-hidden="true"
-              title="Close (disabled)"
-            >
-              <X className="w-4 h-4 text-[#ececec]" />
+            <button disabled className="w-11 h-8 flex items-center justify-center cursor-default opacity-40" aria-hidden="true">
+              <X className="w-4 h-4 text-text-tertiary" />
             </button>
           </div>
         )}
@@ -409,15 +345,11 @@ export default function FullscreenChatView({
         </div>
 
         {/* Scroll to bottom button */}
-        <div
-          className={`sticky bottom-4 left-0 right-0 flex justify-center pointer-events-none ${prefersReducedMotion ? '' : 'transition-opacity duration-300'} ${
-            showScrollButton ? 'opacity-100' : 'opacity-0'
-          }`}
-        >
+        <div className={`sticky bottom-4 left-0 right-0 flex justify-center pointer-events-none ${prefersReducedMotion ? '' : 'transition-opacity duration-300'} ${showScrollButton ? 'opacity-100' : 'opacity-0'}`}>
           <Button
             onClick={scrollToBottomManually}
-            className={`h-9 w-9 p-0 rounded-full bg-[#3a3a3a] hover:bg-[#4a4a4a] text-[#ececec] shadow-lg border border-[#565656] pointer-events-auto ${prefersReducedMotion ? '' : 'transition-all duration-200 hover:scale-110'}`}
-            aria-label="Scroll to bottom of chat"
+            className={`h-9 w-9 p-0 rounded-full bg-surface hover:bg-elevated text-text-secondary shadow-depth-md border border-border-default pointer-events-auto ${prefersReducedMotion ? '' : 'transition-all duration-200 hover:scale-110'}`}
+            aria-label="Scroll to bottom"
             title="Scroll to bottom"
           >
             <ArrowDown className="w-4 h-4" />

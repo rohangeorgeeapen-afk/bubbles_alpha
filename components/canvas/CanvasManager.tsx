@@ -77,8 +77,8 @@ export default function CanvasManager() {
   // Loading state
   if (authLoading || loading) {
     return (
-      <div className="flex h-screen bg-[#212121] items-center justify-center">
-        <div className="w-12 h-12 border-4 border-[#3a3a3a] border-t-[#ececec] rounded-full animate-spin"></div>
+      <div className="flex h-screen bg-base items-center justify-center">
+        <div className="w-12 h-12 border-4 border-border-default border-t-action-primary rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -98,7 +98,7 @@ export default function CanvasManager() {
 
   // Main app for authenticated users
   return (
-    <div className="flex h-screen bg-[#212121] overflow-hidden">
+    <div className="flex h-screen bg-base overflow-hidden">
       <Sidebar
         canvases={canvasSummaries}
         currentCanvasId={currentCanvasId}
@@ -115,7 +115,7 @@ export default function CanvasManager() {
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-0'}`}>
         {hasInitialized && typeof window !== 'undefined' && (
           <CanvasErrorBoundary
-            key={`error-boundary-${currentCanvasId || 'empty'}`}
+            key="canvas-error-boundary"
             onReset={() => {
               if (currentCanvasId) {
                 loadCanvases(true);

@@ -23,8 +23,10 @@ export default function CanvasEmptyState({
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center z-10 px-6">
       <div className="text-center mb-10">
-        <h1 className="text-2xl font-semibold text-[#ececec] mb-2">{welcomeMessage}</h1>
-        <p className="text-base text-[#8e8e8e] max-w-2xl mx-auto whitespace-nowrap">
+        {/* Primary text for main heading */}
+        <h1 className="text-2xl font-semibold text-text-primary mb-2">{welcomeMessage}</h1>
+        {/* Tertiary text for supporting copy */}
+        <p className="text-base text-text-tertiary max-w-2xl mx-auto">
           Ask multiple follow-ups on any response without losing your thread
         </p>
       </div>
@@ -41,18 +43,18 @@ export default function CanvasEmptyState({
               }
             }}
             disabled={isLoading}
-            className="w-full h-14 bg-[#2a2a2a] border border-[#4a4a4a] text-[#ececec] placeholder:text-[#6e6e6e] rounded-xl px-5 pr-14 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-[#00D5FF]/50 transition-colors text-base touch-manipulation"
+            className="w-full h-14 bg-surface border border-border-default text-text-primary placeholder:text-text-disabled rounded-md px-5 pr-14 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-border-focus transition-colors text-base touch-manipulation shadow-depth-sm"
             style={{ fontSize: '16px' }}
           />
           {isLoading ? (
             <div className="absolute right-4 top-1/2 -translate-y-1/2">
-              <div className="w-5 h-5 border-2 border-[#4a4a4a] border-t-[#00D5FF] rounded-full animate-spin"></div>
+              <div className="w-5 h-5 border-2 border-border-strong border-t-action-primary rounded-full animate-spin" />
             </div>
           ) : (
             <Button
               onClick={onStartConversation}
               disabled={!searchTerm.trim()}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 h-9 w-9 p-0 rounded-lg bg-[#00D5FF] hover:bg-[#00B8E6] text-[#0d0d0d] disabled:opacity-30 disabled:bg-[#4a4a4a] disabled:cursor-not-allowed transition-all flex items-center justify-center touch-manipulation"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 h-9 w-9 p-0 rounded-md bg-action-primary hover:bg-action-primary-hover text-action-primary-text disabled:opacity-30 disabled:bg-elevated disabled:cursor-not-allowed transition-colors flex items-center justify-center touch-manipulation"
               aria-label="Send message"
             >
               <ArrowUp className="w-5 h-5" strokeWidth={2.5} />

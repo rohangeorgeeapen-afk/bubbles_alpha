@@ -96,6 +96,11 @@ function ConversationCanvasInner({
   const nodesRef = useRef(nodes);
   const edgesRef = useRef(edges);
   
+  // Refs for callbacks to avoid stale closures
+  const handleDeleteNodeRef = useRef<(nodeId: string) => void>(() => {});
+  const enterFullscreenModeRef = useRef<(nodeId: string) => void>(() => {});
+  const createConversationNodeRef = useRef<(question: string, parentId: string | null) => Promise<void>>(async () => {});
+  
   useEffect(() => {
     nodesRef.current = nodes;
     edgesRef.current = edges;
@@ -297,6 +302,17 @@ function ConversationCanvasInner({
     }
   }, [nodes, edges, onUpdate]);
 
+  // Helper to update a specific node's data
+  const updateNodeData = useCallback((nodeId: string, updates: Partial<ConversationNodeData>) => {
+    setNodes((currentNodes) =>
+      currentNodes.map((node) =>
+        node.id === nodeId
+          ? { ...node, data: { ...node.data, ...updates } }
+          : node
+      )
+    );
+  }, [setNodes]);
+
   const createConversationNode = useCallback(async (question: string, parentId: string | null) => {
     setIsLoading(true);
     const timestamp = new Date().toLocaleString();
@@ -304,126 +320,181 @@ function ConversationCanvasInner({
 
     let conversationHistory: Message[] = [];
     if (parentId) {
-      // Use refs to get the latest state
       conversationHistory = getConversationHistory(parentId, nodesRef.current, edgesRef.current);
     }
     conversationHistory.push({ role: 'user', content: question });
 
-    let aiResponse = '';
-    try {
-      console.log('Sending request to /api/chat with messages:', conversationHistory);
-      
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-      
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: conversationHistory }),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      console.log('Response status:', response.status);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API error response:', errorText);
-        throw new Error(`Failed to get AI response: ${response.status} ${errorText}`);
-      }
-
-      const data = await response.json();
-      console.log('API response data:', data);
-      aiResponse = data.response;
-    } catch (error) {
-      console.error('Error fetching AI response:', error);
-      if (error instanceof Error && error.name === 'AbortError') {
-        aiResponse = 'Request timed out. Please try again.';
-      } else {
-        aiResponse = `Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`;
-      }
-    }
-
+    // Create node immediately with empty response and streaming flag
     const conversationNode: Node<ConversationNodeData> = {
       id: nodeId,
       type: 'conversation',
       position: { x: 0, y: 0 },
       data: {
         question,
-        response: aiResponse,
+        response: '',
         timestamp,
-        onAddFollowUp: async (nodeId: string, q: string) => {
-          await createConversationNode(q, nodeId);
+        isStreaming: true,
+        onAddFollowUp: async (nId: string, q: string) => {
+          await createConversationNodeRef.current(q, nId);
         },
-        onDelete: handleDeleteNode,
-        onMaximize: enterFullscreenMode,
+        onDelete: (nId: string) => handleDeleteNodeRef.current(nId),
+        onMaximize: (nId: string) => enterFullscreenModeRef.current(nId),
         positioned: false,
       },
     };
 
-    // Use functional updates to avoid stale closure issues
-    // First update edges
-    let updatedEdges: Edge[] = [];
-    setEdges((currentEdges) => {
-      const newEdges = [...currentEdges];
-      if (parentId) {
-        newEdges.push({ id: `${parentId}-${nodeId}`, source: parentId, target: nodeId });
-      }
-      updatedEdges = newEdges;
-      return newEdges;
-    });
+    // Build the new edge if there's a parent
+    const newEdge = parentId 
+      ? { id: `${parentId}-${nodeId}`, source: parentId, target: nodeId }
+      : null;
 
-    // Then update nodes with the new edges
+    // Calculate the updated edges using the ref (always current)
+    const updatedEdges = newEdge 
+      ? [...edgesRef.current, newEdge] 
+      : [...edgesRef.current];
+
+    // Capture parent position BEFORE layout for compensation
+    const parentNodeBefore = parentId ? nodesRef.current.find(n => n.id === parentId) : null;
+    const parentPosBefore = parentNodeBefore ? { ...parentNodeBefore.position } : null;
+    
+    // Capture current viewport
+    const viewportBefore = reactFlowInstance ? {
+      ...reactFlowInstance.getViewport(),
+      zoom: reactFlowInstance.getZoom()
+    } : null;
+
+    // Update edges
+    setEdges(updatedEdges);
+
+    // Update nodes with layout
     setNodes((currentNodes) => {
       const newNodes = [...currentNodes, conversationNode];
-
       const { nodes: layoutedNodes } = getLayoutedElements(newNodes, updatedEdges);
       
-      // Update all nodes to have the callback
       const nodesWithCallback = layoutedNodes.map(node => ({
         ...node,
         data: {
           ...node.data,
-          onAddFollowUp: async (nodeId: string, q: string) => {
-            await createConversationNode(q, nodeId);
+          onAddFollowUp: async (nId: string, q: string) => {
+            await createConversationNodeRef.current(q, nId);
           },
-          onDelete: handleDeleteNode,
-          onMaximize: enterFullscreenMode,
+          onDelete: (nId: string) => handleDeleteNodeRef.current(nId),
+          onMaximize: (nId: string) => enterFullscreenModeRef.current(nId),
         }
       }));
       
-      // Trigger smart panning after layout (only for child nodes)
-      if (parentId) {
-        requestAnimationFrame(() => {
-          // Try smart panning first
-          handleSmartPanning(parentId, nodeId, nodesWithCallback);
+      // Compensate for layout shift and pan to new node
+      if (reactFlowInstance && viewportBefore) {
+        const parentNodeAfter = parentId ? nodesWithCallback.find(n => n.id === parentId) : null;
+        const newNode = nodesWithCallback.find(n => n.id === nodeId);
+        
+        if (parentId && parentPosBefore && parentNodeAfter && newNode) {
+          // Calculate how much the parent shifted
+          const shiftX = parentNodeAfter.position.x - parentPosBefore.x;
+          const shiftY = parentNodeAfter.position.y - parentPosBefore.y;
           
-          // Fallback: if smart panning fails, just pan to the new node
-          setTimeout(() => {
-            const newNode = nodesWithCallback.find(n => n.id === nodeId);
-            if (newNode && reactFlowInstance) {
-              try {
-                reactFlowInstance.fitView({
-                  nodes: [newNode],
-                  duration: 300,
-                  padding: 0.2,
-                  maxZoom: 1,
-                });
-              } catch (e) {
-                console.warn('Fallback pan failed:', e);
-              }
-            }
-          }, 100);
-        });
+          // Immediately adjust viewport to compensate for the shift (no animation)
+          // This keeps the view stable while layout changes
+          reactFlowInstance.setViewport({
+            x: viewportBefore.x - shiftX * viewportBefore.zoom,
+            y: viewportBefore.y - shiftY * viewportBefore.zoom,
+            zoom: viewportBefore.zoom
+          }, { duration: 0 });
+          
+          // Then smoothly pan to the new node
+          requestAnimationFrame(() => {
+            const nodeWidth = 450;
+            const nodeHeight = 468;
+            const centerX = newNode.position.x + nodeWidth / 2;
+            const centerY = newNode.position.y + nodeHeight / 2;
+            
+            reactFlowInstance.setCenter(centerX, centerY, { 
+              duration: 400,
+              zoom: viewportBefore.zoom
+            });
+          });
+        } else if (newNode) {
+          // First node - just center on it
+          requestAnimationFrame(() => {
+            const nodeWidth = 450;
+            const nodeHeight = 468;
+            const centerX = newNode.position.x + nodeWidth / 2;
+            const centerY = newNode.position.y + nodeHeight / 2;
+            
+            const targetZoom = Math.max(viewportBefore.zoom, 0.8);
+            reactFlowInstance.setCenter(centerX, centerY, { 
+              duration: 400,
+              zoom: targetZoom
+            });
+          });
+        }
       }
       
       return nodesWithCallback;
     });
 
+    // Now stream the response
+    let fullResponse = '';
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s for streaming
+      
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: conversationHistory, stream: true }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`API error: ${response.status} ${errorText}`);
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('No response body');
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data === '[DONE]') continue;
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.content) {
+                fullResponse += parsed.content;
+                updateNodeData(nodeId, { response: fullResponse });
+              }
+            } catch { /* skip malformed */ }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Streaming error:', error);
+      if (error instanceof Error && error.name === 'AbortError') {
+        fullResponse = fullResponse || 'Request timed out. Please try again.';
+      } else if (!fullResponse) {
+        fullResponse = `Sorry, an error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      }
+    }
+
+    // Mark streaming complete
+    updateNodeData(nodeId, { response: fullResponse, isStreaming: false });
     setIsLoading(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [getConversationHistory, setNodes, setEdges, handleSmartPanning, reactFlowInstance]);
+  }, [getConversationHistory, setNodes, setEdges, handleSmartPanning, reactFlowInstance, updateNodeData]);
 
   // Delete node and all its descendants
   const handleDeleteNode = useCallback((nodeId: string) => {
@@ -467,10 +538,10 @@ function ConversationCanvasInner({
       data: {
         ...node.data,
         onAddFollowUp: async (nodeId: string, q: string) => {
-          await createConversationNode(q, nodeId);
+          await createConversationNodeRef.current(q, nodeId);
         },
-        onDelete: handleDeleteNode,
-        onMaximize: enterFullscreenMode,
+        onDelete: (nodeId: string) => handleDeleteNodeRef.current(nodeId),
+        onMaximize: (nodeId: string) => enterFullscreenModeRef.current(nodeId),
       }
     }));
     
@@ -490,7 +561,14 @@ function ConversationCanvasInner({
       setShowUndoToast(false);
       setDeletedState(null);
     }, 5000);
-  }, [setNodes, setEdges, createConversationNode, enterFullscreenMode]);
+  }, [setNodes, setEdges]);
+
+  // Keep callback refs updated to avoid stale closures
+  useEffect(() => {
+    handleDeleteNodeRef.current = handleDeleteNode;
+    enterFullscreenModeRef.current = enterFullscreenMode;
+    createConversationNodeRef.current = createConversationNode;
+  }, [handleDeleteNode, enterFullscreenMode, createConversationNode]);
   
   // Undo delete
   const handleUndoDelete = useCallback(() => {
@@ -539,10 +617,10 @@ function ConversationCanvasInner({
           response: aiResponse,
           timestamp,
           onAddFollowUp: async (nodeId: string, q: string) => {
-            await createConversationNode(q, nodeId);
+            await createConversationNodeRef.current(q, nodeId);
           },
-          onDelete: handleDeleteNode,
-          onMaximize: enterFullscreenMode,
+          onDelete: (nodeId: string) => handleDeleteNodeRef.current(nodeId),
+          onMaximize: (nodeId: string) => enterFullscreenModeRef.current(nodeId),
           positioned: false,
         },
       };
@@ -567,10 +645,10 @@ function ConversationCanvasInner({
             data: {
               ...node.data,
               onAddFollowUp: async (nodeId: string, q: string) => {
-                await createConversationNode(q, nodeId);
+                await createConversationNodeRef.current(q, nodeId);
               },
-              onDelete: handleDeleteNode,
-              onMaximize: enterFullscreenMode,
+              onDelete: (nodeId: string) => handleDeleteNodeRef.current(nodeId),
+              onMaximize: (nodeId: string) => enterFullscreenModeRef.current(nodeId),
             }
           }));
           
@@ -773,15 +851,22 @@ function ConversationCanvasInner({
         data: {
           ...node.data,
           onAddFollowUp: async (nodeId: string, q: string) => {
-            await createConversationNode(q, nodeId);
+            await createConversationNodeRef.current(q, nodeId);
           },
-          onDelete: handleDeleteNode,
-          onMaximize: enterFullscreenMode,
+          onDelete: (nodeId: string) => handleDeleteNodeRef.current(nodeId),
+          onMaximize: (nodeId: string) => enterFullscreenModeRef.current(nodeId),
         },
       }));
       setNodes(nodesWithCallback);
+      
+      // Initial fitView on mount when loading existing nodes
+      if (reactFlowInstance) {
+        setTimeout(() => {
+          reactFlowInstance.fitView({ padding: 0.3, maxZoom: 1, duration: 300 });
+        }, 100);
+      }
     }
-  }, [nodes, createConversationNode, handleDeleteNode, enterFullscreenMode, setNodes]);
+  }, [nodes, setNodes, reactFlowInstance]);
 
   // Network status is now handled by useNetworkStatus hook
 
@@ -939,8 +1024,6 @@ function ConversationCanvasInner({
           onConnect={onConnect}
           onMove={onMove}
           nodeTypes={nodeTypes}
-          fitView
-          fitViewOptions={{ padding: 0.3, maxZoom: 1, minZoom: 0.01 }}
           minZoom={0.01}
           maxZoom={2}
           noWheelClassName="nowheel"
@@ -959,7 +1042,7 @@ function ConversationCanvasInner({
             animated: false,
           }}
         >
-        <Background variant={BackgroundVariant.Dots} color="rgba(255, 255, 255, 0.03)" gap={20} size={1} />
+        <Background variant={BackgroundVariant.Dots} color="rgba(14, 165, 233, 0.03)" gap={40} size={1} />
         {nodes.length > 0 && (
           <>
             <CanvasControls
@@ -969,12 +1052,12 @@ function ConversationCanvasInner({
             />
 
             <MiniMap 
-              className="!bg-[#1a1a1a] !border-[#3a3a3a] !rounded-2xl !shadow-2xl !overflow-hidden backdrop-blur-sm" 
-              maskColor="rgba(13, 13, 13, 0.85)"
-              nodeColor="#2f2f2f"
-              nodeStrokeColor="#4d4d4d"
-              nodeBorderRadius={8}
-              maskStrokeColor="#565656"
+              className="!bg-[hsl(222,47%,6%)] !border-[hsl(222,30%,18%)] !rounded-lg !shadow-2xl !overflow-hidden backdrop-blur-sm" 
+              maskColor="rgba(10, 15, 26, 0.85)"
+              nodeColor="hsl(222, 47%, 12%)"
+              nodeStrokeColor="hsl(222, 30%, 20%)"
+              nodeBorderRadius={6}
+              maskStrokeColor="hsl(222, 30%, 25%)"
               maskStrokeWidth={2}
             />
           </>

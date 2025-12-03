@@ -121,11 +121,9 @@ export default function ChatInput({
   const canSend = inputValue.trim() && !isDisabled;
 
   return (
-    <div className="border-t border-[#4d4d4d] bg-[#1a1a1a] px-6 py-3 flex-shrink-0 relative" style={{ boxShadow: '0 -8px 16px rgba(0, 0, 0, 0.4)' }}>
+    <div className="border-t border-border-subtle bg-void px-6 py-3 flex-shrink-0 relative shadow-depth-lg">
       <div className="max-w-4xl mx-auto relative">
-        <label htmlFor="chat-input" className="sr-only">
-          Type your message
-        </label>
+        <label htmlFor="chat-input" className="sr-only">Type your message</label>
         <Textarea
           id="chat-input"
           ref={inputRef}
@@ -136,32 +134,20 @@ export default function ChatInput({
           disabled={isDisabled}
           aria-label="Chat message input"
           aria-describedby="chat-input-help"
-          className="w-full max-h-[150px] text-[15px] bg-[#2a2a2a] border border-[#4a4a4a] text-[#ececec] placeholder:text-[#6e6e6e] rounded-xl px-4 py-2.5 pr-12 resize-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-[#00D5FF]/50 leading-normal overflow-y-auto transition-colors duration-200"
-          style={{ 
-            fontSize: '15px',
-            minHeight: '48px',
-            height: '48px',
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none',
-          }}
+          className="w-full max-h-[150px] text-[15px] bg-surface border border-border-default text-text-primary placeholder:text-text-disabled rounded-md px-4 py-2.5 pr-12 resize-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-border-focus leading-normal overflow-y-auto transition-colors"
+          style={{ fontSize: '15px', minHeight: '48px', height: '48px', scrollbarWidth: 'none' }}
           rows={1}
         />
-        <span id="chat-input-help" className="sr-only">
-          Press Enter to send, Shift+Enter for new line, Escape to close
-        </span>
+        <span id="chat-input-help" className="sr-only">Press Enter to send, Shift+Enter for new line, Escape to close</span>
         <Button
           onClick={handleSubmit}
           disabled={!canSend}
           aria-label={isSubmitting || isLoading ? 'Sending message' : 'Send message'}
-          className={`absolute right-2 top-1/2 -translate-y-1/2 h-[36px] w-[36px] p-0 rounded-lg bg-[#00D5FF] hover:bg-[#00B8E6] text-[#0d0d0d] disabled:opacity-30 disabled:bg-[#4a4a4a] disabled:cursor-not-allowed ${prefersReducedMotion ? '' : 'transition-all duration-200'} flex items-center justify-center`}
+          className={`absolute right-2 top-1/2 -translate-y-1/2 h-9 w-9 p-0 rounded-md bg-action-primary hover:bg-action-primary-hover text-action-primary-text disabled:opacity-30 disabled:bg-elevated disabled:cursor-not-allowed ${prefersReducedMotion ? '' : 'transition-colors'} flex items-center justify-center`}
           title="Send message (Enter)"
         >
           {isSubmitting || isLoading ? (
-            <div 
-              className="w-4 h-4 border-2 border-[#4a4a4a] border-t-[#00D5FF] rounded-full animate-spin"
-              role="status"
-              aria-label="Loading"
-            ></div>
+            <div className="w-4 h-4 border-2 border-border-strong border-t-action-primary rounded-full animate-spin" role="status" aria-label="Loading" />
           ) : (
             <ArrowUp className="w-4 h-4" strokeWidth={2.5} />
           )}
