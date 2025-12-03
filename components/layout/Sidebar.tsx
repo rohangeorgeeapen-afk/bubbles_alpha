@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2, PanelLeftClose, PanelLeft, User, LogOut, Pencil, Check, X, Search, AlertTriangle } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -126,14 +127,15 @@ export default function Sidebar({
                   }
                 }}
               >
-                <img 
+                <Image 
                   src="/logo.png" 
-                  alt="Bubbles Logo" 
-                  className="w-full h-full object-contain animate-bubble-pop transition-all duration-500 ease-out"
+                  alt="Bubbles Logo"
+                  width={32}
+                  height={32}
+                  className={`w-full h-full object-contain animate-bubble-pop transition-all duration-500 ease-out ${logoHovered ? 'scale-[1.4]' : 'scale-100'}`}
                   style={{ 
                     background: 'transparent',
-                    transition: 'transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), rotate 1s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-                    transform: logoHovered ? 'scale(1.4)' : 'scale(1)'
+                    transition: 'transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), rotate 1s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
                   }}
                 />
               </div>
@@ -141,7 +143,7 @@ export default function Sidebar({
                 <h1 
                   className="text-xl font-bold tracking-tight" 
                   style={{ 
-                    fontFamily: '"Montserrat", sans-serif', 
+                    fontFamily: 'var(--font-montserrat), sans-serif', 
                     fontWeight: 700, 
                     backgroundImage: 'linear-gradient(to bottom, #ffffff 30%, #e0f2fe 70%)',
                     backgroundClip: 'text',

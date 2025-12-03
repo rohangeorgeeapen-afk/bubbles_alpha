@@ -4,9 +4,92 @@ import { createClient } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
+// Input validation schemas
 interface Message {
   role: 'user' | 'assistant' | 'system';
   content: string;
+}
+
+// Validation constants
+const MAX_MESSAGE_LENGTH = 32000; // Max characters per message
+const MAX_MESSAGES = 100; // Max messages in conversation history
+const MAX_TOTAL_CONTENT_LENGTH = 128000; // Max total content length
+
+/**
+ * Validates and sanitizes the messages array
+ * Returns sanitized messages or throws an error
+ */
+function validateMessages(messages: unknown): Message[] {
+  // Check if messages is an array
+  if (!Array.isArray(messages)) {
+    throw new Error('Messages must be an array');
+  }
+
+  // Check message count
+  if (messages.length === 0) {
+    throw new Error('Messages array cannot be empty');
+  }
+
+  if (messages.length > MAX_MESSAGES) {
+    throw new Error(`Too many messages. Maximum allowed: ${MAX_MESSAGES}`);
+  }
+
+  let totalContentLength = 0;
+  const validatedMessages: Message[] = [];
+
+  for (let i = 0; i < messages.length; i++) {
+    const msg = messages[i];
+
+    // Check message structure
+    if (!msg || typeof msg !== 'object') {
+      throw new Error(`Invalid message at index ${i}: must be an object`);
+    }
+
+    // Validate role
+    const role = msg.role;
+    if (!role || !['user', 'assistant', 'system'].includes(role)) {
+      throw new Error(`Invalid role at index ${i}: must be 'user', 'assistant', or 'system'`);
+    }
+
+    // Validate content
+    const content = msg.content;
+    if (typeof content !== 'string') {
+      throw new Error(`Invalid content at index ${i}: must be a string`);
+    }
+
+    // Check content length
+    if (content.length > MAX_MESSAGE_LENGTH) {
+      throw new Error(`Message at index ${i} exceeds maximum length of ${MAX_MESSAGE_LENGTH} characters`);
+    }
+
+    totalContentLength += content.length;
+
+    // Sanitize content - remove potential injection attempts
+    const sanitizedContent = content
+      .trim()
+      // Remove null bytes
+      .replace(/\0/g, '')
+      // Limit consecutive newlines
+      .replace(/\n{5,}/g, '\n\n\n\n');
+
+    validatedMessages.push({
+      role: role as Message['role'],
+      content: sanitizedContent,
+    });
+  }
+
+  // Check total content length
+  if (totalContentLength > MAX_TOTAL_CONTENT_LENGTH) {
+    throw new Error(`Total content length exceeds maximum of ${MAX_TOTAL_CONTENT_LENGTH} characters`);
+  }
+
+  // Ensure the last message is from the user (for chat completion)
+  const lastMessage = validatedMessages[validatedMessages.length - 1];
+  if (lastMessage.role !== 'user') {
+    throw new Error('Last message must be from the user');
+  }
+
+  return validatedMessages;
 }
 
 const SYSTEM_PROMPT = `You are a passionate educator helping someone explore topics completely new to them. Make learning feel like a genuine conversation that respects their intelligence and curiosity.
@@ -79,11 +162,34 @@ async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 5)
 
 export async function POST(request: NextRequest) {
   try {
-    const { messages } = await request.json();
-
-    if (!messages || !Array.isArray(messages)) {
+    // Parse request body with error handling
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
       return NextResponse.json(
-        { error: 'Messages array is required' },
+        { error: 'Invalid JSON in request body' },
+        { status: 400 }
+      );
+    }
+
+    // Validate request body structure
+    if (!body || typeof body !== 'object') {
+      return NextResponse.json(
+        { error: 'Request body must be an object' },
+        { status: 400 }
+      );
+    }
+
+    const { messages: rawMessages } = body as { messages?: unknown };
+
+    // Validate and sanitize messages
+    let messages: Message[];
+    try {
+      messages = validateMessages(rawMessages);
+    } catch (validationError) {
+      return NextResponse.json(
+        { error: validationError instanceof Error ? validationError.message : 'Invalid messages' },
         { status: 400 }
       );
     }
@@ -137,8 +243,13 @@ export async function POST(request: NextRequest) {
       );
 
       if (!response.ok) {
-        const errorData = await response.text();
-        console.error('Gemini API error:', errorData);
+        // Log error without exposing sensitive details
+        // Only log status code and generic info, not full response which may contain API keys in error messages
+        console.error('Gemini API error:', {
+          status: response.status,
+          statusText: response.statusText,
+          timestamp: new Date().toISOString(),
+        });
         
         // Handle rate limiting with user-friendly message
         if (response.status === 429) {
@@ -148,7 +259,7 @@ export async function POST(request: NextRequest) {
           );
         }
         
-        // Generic error for other issues
+        // Generic error for other issues - don't expose internal error details
         return NextResponse.json(
           { error: 'Unable to get a response from the AI. Please try again.' },
           { status: 500 }

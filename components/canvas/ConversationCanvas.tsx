@@ -17,49 +17,22 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import ConversationNode, { ConversationNodeData } from './ConversationNode';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ArrowUp, Undo2 } from 'lucide-react';
 import { getLayoutedElements } from '@/lib/utils/layout';
 import { ViewportManager } from '@/lib/utils/viewport-manager';
 import FullscreenChatView from './FullscreenChatView';
 
+// Extracted components
+import CanvasEmptyState from './CanvasEmptyState';
+import CanvasControls from './CanvasControls';
+import UndoToast from './UndoToast';
+import NetworkStatusIndicator from './NetworkStatusIndicator';
+import { FollowUpDialog, ExitConfirmationDialog } from './CanvasDialogs';
+import { useConversationHistory, useNetworkStatus, useSmartPanning } from './hooks';
+import type { Message, FullscreenState, ConversationCanvasProps } from './types';
+
 const nodeTypes = {
   conversation: ConversationNode as any,
 };
-
-interface Message {
-  id?: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp?: string;
-  nodeId?: string;
-  isError?: boolean;
-  retryData?: {
-    userMessage: string;
-  };
-}
-
-interface FullscreenState {
-  isFullscreen: boolean;
-  activeNodeId: string | null;
-  conversationThread: Message[];
-  isTransitioning: boolean;
-  transitionBounds?: {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  };
-}
-
-interface ConversationCanvasProps {
-  initialNodes?: Node[];
-  initialEdges?: Edge[];
-  onUpdate?: (nodes: Node[], edges: Edge[]) => void;
-  sidebarOpen?: boolean;
-}
 
 // Inner component that uses ReactFlow hooks
 function ConversationCanvasInner({ 
@@ -107,41 +80,17 @@ function ConversationCanvasInner({
   const [isFullscreenLoading, setIsFullscreenLoading] = useState(false);
   const [animateToFullscreen, setAnimateToFullscreen] = useState(false);
   const [animateFromFullscreen, setAnimateFromFullscreen] = useState(false);
-  const [isOnline, setIsOnline] = useState(true);
+  const isOnline = useNetworkStatus();
   const abortControllerRef = useRef<AbortController | null>(null);
   const [showExitConfirmation, setShowExitConfirmation] = useState(false);
   
-  // Initialize ReactFlow instance for viewport control
-  const reactFlowInstance = useReactFlow();
-  
-  // Panning queue management
-  const [isPanning, setIsPanning] = useState(false);
-  const panQueue = useRef<Array<{ parentId: string; childId: string; nodes: Node[] }>>([]);
-  const userInteracting = useRef(false);
+  // Smart panning hook
+  const { handleSmartPanning, handleUserInteraction, reactFlowInstance } = useSmartPanning();
   
   // Undo delete functionality
   const [showUndoToast, setShowUndoToast] = useState(false);
   const [deletedState, setDeletedState] = useState<{ nodes: Node[]; edges: Edge[] } | null>(null);
   const undoTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
-  // Process the next item in the panning queue
-  const processPanQueue = useCallback(() => {
-    // Don't process queue if user is interacting
-    if (userInteracting.current) {
-      console.log('🚫 User interacting, skipping queue processing');
-      return;
-    }
-    
-    if (panQueue.current.length === 0) {
-      return;
-    }
-    
-    const nextPan = panQueue.current.shift();
-    if (nextPan) {
-      console.log('📋 Processing queued pan operation:', nextPan.parentId, '->', nextPan.childId);
-      handleSmartPanningInternal(nextPan.parentId, nextPan.childId, nextPan.nodes);
-    }
-  }, []);
   
   // Use refs to always have access to latest nodes and edges
   const nodesRef = useRef(nodes);
@@ -157,104 +106,8 @@ function ConversationCanvasInner({
     onNodesChange(changes);
   }, [onNodesChange]);
 
-  const getConversationHistory = (nodeId: string, currentNodes: Node[], currentEdges: Edge[]): Message[] => {
-    const history: Message[] = [];
-    let currentNodeId: string | null = nodeId;
-
-    console.log('🔍 Getting conversation history for node:', nodeId);
-    console.log('📊 Current nodes:', currentNodes.map(n => ({ id: n.id, q: n.data.question })));
-    console.log('🔗 Current edges:', currentEdges);
-
-    while (currentNodeId) {
-      const currentNode = currentNodes.find((n) => n.id === currentNodeId);
-      if (!currentNode) {
-        console.log('❌ Node not found:', currentNodeId);
-        break;
-      }
-
-      if (currentNode.type === 'conversation') {
-        const nodeData = currentNode.data as unknown as ConversationNodeData;
-        console.log('✅ Adding to history:', { q: nodeData.question, a: nodeData.response.substring(0, 50) });
-        history.unshift(
-          { role: 'user', content: nodeData.question },
-          { role: 'assistant', content: nodeData.response }
-        );
-      }
-
-      const parentEdge = currentEdges.find((e) => e.target === currentNodeId);
-      console.log('🔼 Parent edge:', parentEdge);
-      currentNodeId = parentEdge ? parentEdge.source : null;
-    }
-
-    console.log('📝 Final history length:', history.length);
-    return history;
-  };
-
-  // Memoized conversation thread calculation for performance
-  const conversationThreadCache = useRef<Map<string, Message[]>>(new Map());
-  
-  // Build conversation thread for fullscreen mode - with memoization
-  const buildConversationThread = useCallback((
-    activeNodeId: string,
-    currentNodes: Node[],
-    currentEdges: Edge[]
-  ): Message[] => {
-    // Create cache key from node IDs and edge IDs
-    const cacheKey = `${activeNodeId}-${currentNodes.length}-${currentEdges.length}`;
-    
-    // Check cache first
-    if (conversationThreadCache.current.has(cacheKey)) {
-      const cached = conversationThreadCache.current.get(cacheKey);
-      if (cached) return cached;
-    }
-    
-    const thread: Message[] = [];
-    let currentId: string | null = activeNodeId;
-    
-    // Traverse backwards to root to build the path
-    const path: string[] = [];
-    while (currentId) {
-      path.unshift(currentId);
-      const parentEdge = currentEdges.find(e => e.target === currentId);
-      currentId = parentEdge ? parentEdge.source : null;
-    }
-    
-    // Build messages from path
-    path.forEach(nodeId => {
-      const node = currentNodes.find(n => n.id === nodeId);
-      if (node && node.type === 'conversation') {
-        const nodeData = node.data as unknown as ConversationNodeData;
-        thread.push(
-          {
-            id: `${nodeId}-q`,
-            role: 'user',
-            content: nodeData.question,
-            timestamp: nodeData.timestamp,
-            nodeId: nodeId
-          },
-          {
-            id: `${nodeId}-a`,
-            role: 'assistant',
-            content: nodeData.response,
-            timestamp: nodeData.timestamp,
-            nodeId: nodeId
-          }
-        );
-      }
-    });
-    
-    // Store in cache (limit cache size to prevent memory issues)
-    if (conversationThreadCache.current.size > 50) {
-      // Clear oldest entries
-      const firstKey = conversationThreadCache.current.keys().next().value;
-      if (firstKey) {
-        conversationThreadCache.current.delete(firstKey);
-      }
-    }
-    conversationThreadCache.current.set(cacheKey, thread);
-    
-    return thread;
-  }, []);
+  // Use extracted conversation history hook
+  const { getConversationHistory, buildConversationThread } = useConversationHistory();
 
   // Enter fullscreen mode with fade + scale animation
   const enterFullscreenMode = useCallback((nodeId: string) => {
@@ -411,220 +264,7 @@ function ConversationCanvasInner({
     }
   }, [fullscreenState.activeNodeId, reactFlowInstance, isFullscreenLoading]);
 
-  // Internal function that performs the actual panning
-  const handleSmartPanningInternal = useCallback((parentId: string, childId: string, currentNodes: Node[]) => {
-    try {
-      // Check if ReactFlow instance is ready
-      if (!reactFlowInstance) {
-        console.warn('⚠️ ReactFlow instance not ready, skipping smart panning');
-        setIsPanning(false);
-        processPanQueue();
-        return;
-      }
-
-      // Null check: Verify parentId and childId are provided
-      if (!parentId || !childId) {
-        console.warn('⚠️ Invalid node IDs provided:', { parentId, childId });
-        setIsPanning(false);
-        processPanQueue();
-        return;
-      }
-
-      // Null check: Verify currentNodes array is valid
-      if (!currentNodes || !Array.isArray(currentNodes) || currentNodes.length === 0) {
-        console.warn('⚠️ Invalid nodes array provided');
-        setIsPanning(false);
-        processPanQueue();
-        return;
-      }
-
-      // Get parent and child nodes with null checks
-      const parentNode = currentNodes.find(n => n.id === parentId);
-      const childNode = currentNodes.find(n => n.id === childId);
-
-      // Null check: Parent node must exist
-      if (!parentNode) {
-        console.warn('⚠️ Parent node not found:', parentId);
-        setIsPanning(false);
-        processPanQueue();
-        return;
-      }
-
-      // Null check: Child node must exist
-      if (!childNode) {
-        console.warn('⚠️ Child node not found:', childId);
-        setIsPanning(false);
-        processPanQueue();
-        return;
-      }
-
-      // Null check: Verify node positions are valid
-      if (!parentNode.position || typeof parentNode.position.x !== 'number' || typeof parentNode.position.y !== 'number') {
-        console.warn('⚠️ Parent node has invalid position:', parentNode.position);
-        setIsPanning(false);
-        processPanQueue();
-        return;
-      }
-
-      if (!childNode.position || typeof childNode.position.x !== 'number' || typeof childNode.position.y !== 'number') {
-        console.warn('⚠️ Child node has invalid position:', childNode.position);
-        setIsPanning(false);
-        processPanQueue();
-        return;
-      }
-
-      // Calculate node bounds (width: 450px, height: 350-468px, using 468 for safety)
-      const parentBounds = {
-        x: parentNode.position.x,
-        y: parentNode.position.y,
-        width: 450,
-        height: 468,
-      };
-
-      const childBounds = {
-        x: childNode.position.x,
-        y: childNode.position.y,
-        width: 450,
-        height: 468,
-      };
-
-      // Try-catch around viewport API calls
-      let viewport, zoom, viewportWidth, viewportHeight;
-      try {
-        viewport = reactFlowInstance.getViewport();
-        zoom = reactFlowInstance.getZoom();
-        
-        // Get viewport dimensions from the DOM
-        const reactFlowWrapper = document.querySelector('.react-flow');
-        viewportWidth = reactFlowWrapper?.clientWidth || window.innerWidth;
-        viewportHeight = reactFlowWrapper?.clientHeight || window.innerHeight;
-      } catch (viewportError) {
-        console.warn('⚠️ Error getting viewport information:', viewportError);
-        setIsPanning(false);
-        processPanQueue();
-        return;
-      }
-
-      // Verify viewport data is valid
-      if (!viewport || typeof zoom !== 'number' || !viewportWidth || !viewportHeight) {
-        console.warn('⚠️ Invalid viewport data:', { viewport, zoom, viewportWidth, viewportHeight });
-        setIsPanning(false);
-        processPanQueue();
-        return;
-      }
-
-      const viewportInfo = {
-        x: viewport.x,
-        y: viewport.y,
-        zoom: zoom,
-        width: viewportWidth,
-        height: viewportHeight,
-      };
-
-      console.log('🔍 Smart Panning Check:', {
-        parentId,
-        childId,
-        parentBounds,
-        childBounds,
-        viewportInfo,
-      });
-
-      // Try-catch around visibility check
-      let visibilityResult;
-      try {
-        visibilityResult = ViewportManager.areBothNodesVisible(
-          parentBounds,
-          childBounds,
-          viewportInfo,
-          50 // 50px margin
-        );
-      } catch (visibilityError) {
-        console.warn('⚠️ Error checking node visibility:', visibilityError);
-        setIsPanning(false);
-        processPanQueue();
-        return;
-      }
-
-      console.log('👁️ Visibility Result:', visibilityResult);
-
-      if (!visibilityResult.isVisible) {
-        // Try-catch around bounds calculation
-        let combinedBounds;
-        try {
-          combinedBounds = ViewportManager.calculateCombinedBounds(
-            parentBounds,
-            childBounds,
-            50 // 50px margin
-          );
-        } catch (boundsError) {
-          console.warn('⚠️ Error calculating combined bounds:', boundsError);
-          setIsPanning(false);
-          processPanQueue();
-          return;
-        }
-
-        console.log('📐 Combined Bounds:', combinedBounds);
-        console.log('🎯 Panning to show both nodes...');
-
-        // Try-catch around fitBounds call
-        try {
-          reactFlowInstance.fitBounds(
-            {
-              x: combinedBounds.x,
-              y: combinedBounds.y,
-              width: combinedBounds.width,
-              height: combinedBounds.height,
-            },
-            {
-              duration: 500,
-              padding: 0.01, // 1% padding - minimal zoom out, keeps text very readable
-            }
-          );
-          
-          // After panning completes, process next item in queue
-          setTimeout(() => {
-            setIsPanning(false);
-            processPanQueue();
-          }, 500); // Match the animation duration
-        } catch (fitBoundsError) {
-          console.warn('⚠️ Error calling fitBounds:', fitBoundsError);
-          setIsPanning(false);
-          processPanQueue();
-          return;
-        }
-      } else {
-        console.log('✅ Both nodes already visible, no panning needed');
-        setIsPanning(false);
-        processPanQueue();
-      }
-    } catch (error) {
-      // Catch-all for any unexpected errors
-      console.warn('⚠️ Unexpected error in handleSmartPanning:', error);
-      // Don't throw - panning failure shouldn't break node creation
-      setIsPanning(false);
-      processPanQueue();
-    }
-  }, [reactFlowInstance]);
-
-  // Public function that handles queueing
-  const handleSmartPanning = useCallback((parentId: string, childId: string, currentNodes: Node[]) => {
-    // Don't pan if user is interacting
-    if (userInteracting.current) {
-      console.log('🚫 User interacting, skipping auto-pan');
-      return;
-    }
-    
-    // If panning is in progress, add to queue
-    if (isPanning) {
-      console.log('⏳ Panning in progress, adding to queue:', parentId, '->', childId);
-      panQueue.current.push({ parentId, childId, nodes: currentNodes });
-      return;
-    }
-    
-    // Otherwise, start panning immediately
-    setIsPanning(true);
-    handleSmartPanningInternal(parentId, childId, currentNodes);
-  }, [isPanning, handleSmartPanningInternal]);
+  // Smart panning is now handled by useSmartPanning hook
 
   // Notify parent of changes - strip out functions before saving
   // Use a ref to track the last saved state to avoid infinite loops
@@ -1143,19 +783,7 @@ function ConversationCanvasInner({
     }
   }, [nodes, createConversationNode, handleDeleteNode, enterFullscreenMode, setNodes]);
 
-  // Monitor network status
-  useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
+  // Network status is now handled by useNetworkStatus hook
 
   // Handle window resize - recalculate animation bounds if in fullscreen
   useEffect(() => {
@@ -1214,22 +842,7 @@ function ConversationCanvasInner({
     [setEdges]
   );
 
-  // Handle user interaction to cancel auto-panning
-  const handleUserInteraction = useCallback(() => {
-    if (isPanning || panQueue.current.length > 0) {
-      console.log('👤 User interaction detected, clearing pan queue');
-      userInteracting.current = true;
-      panQueue.current = [];
-      setIsPanning(false);
-      
-      // Reset the flag after a short delay
-      setTimeout(() => {
-        userInteracting.current = false;
-      }, 1000);
-    }
-  }, [isPanning]);
-
-  // Use onMove to detect both pan and zoom interactions
+  // Use onMove to detect both pan and zoom interactions (handleUserInteraction from hook)
   const onMove = useCallback(() => {
     handleUserInteraction();
   }, [handleUserInteraction]);
@@ -1310,11 +923,10 @@ function ConversationCanvasInner({
       
 
       {/* Network status indicator */}
-      {!isOnline && fullscreenState.isFullscreen && (
-        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-50 bg-red-900/90 border border-red-700 rounded-lg px-4 py-2 shadow-lg">
-          <span className="text-white text-sm font-medium">No internet connection</span>
-        </div>
-      )}
+      <NetworkStatusIndicator 
+        isOnline={isOnline} 
+        show={fullscreenState.isFullscreen} 
+      />
       
 
       {/* Render canvas when not in fullscreen mode (including during exit transition setup) */}
@@ -1350,59 +962,11 @@ function ConversationCanvasInner({
         <Background variant={BackgroundVariant.Dots} color="rgba(255, 255, 255, 0.03)" gap={20} size={1} />
         {nodes.length > 0 && (
           <>
-            <div className="absolute bottom-6 left-6 flex flex-col gap-2 z-10">
-              <button
-                onClick={() => reactFlowInstance.zoomIn()}
-                className="w-10 h-10 bg-[#2a2a2a] text-[#ececec] rounded-lg font-normal text-sm border border-[#4a4a4a] shadow-md transition-all duration-200 hover:border-[#00D5FF]/50 hover:shadow-lg hover:shadow-[#00D5FF]/30 hover:-translate-y-0.5 flex items-center justify-center"
-                style={{ background: 'rgba(42, 42, 42, 0.8)' }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(96, 165, 250, 0.2))';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'rgba(42, 42, 42, 0.8)';
-                }}
-                aria-label="Zoom in"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
-                  <line x1="12" y1="5" x2="12" y2="19"></line>
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
-              </button>
-              
-              <button
-                onClick={() => reactFlowInstance.zoomOut()}
-                className="w-10 h-10 bg-[#2a2a2a] text-[#ececec] rounded-lg font-normal text-sm border border-[#4a4a4a] shadow-md transition-all duration-200 hover:border-[#00D5FF]/50 hover:shadow-lg hover:shadow-[#00D5FF]/30 hover:-translate-y-0.5 flex items-center justify-center"
-                style={{ background: 'rgba(42, 42, 42, 0.8)' }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(96, 165, 250, 0.2))';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'rgba(42, 42, 42, 0.8)';
-                }}
-                aria-label="Zoom out"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
-              </button>
-              
-              <button
-                onClick={() => reactFlowInstance.fitView({ padding: 0.2 })}
-                className="w-10 h-10 bg-[#2a2a2a] text-[#ececec] rounded-lg font-normal text-sm border border-[#4a4a4a] shadow-md transition-all duration-200 hover:border-[#00D5FF]/50 hover:shadow-lg hover:shadow-[#00D5FF]/30 hover:-translate-y-0.5 flex items-center justify-center"
-                style={{ background: 'rgba(42, 42, 42, 0.8)' }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(96, 165, 250, 0.2))';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'rgba(42, 42, 42, 0.8)';
-                }}
-                aria-label="Fit view"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
-                  <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
-                </svg>
-              </button>
-            </div>
+            <CanvasControls
+              onZoomIn={() => reactFlowInstance.zoomIn()}
+              onZoomOut={() => reactFlowInstance.zoomOut()}
+              onFitView={() => reactFlowInstance.fitView({ padding: 0.2 })}
+            />
 
             <MiniMap 
               className="!bg-[#1a1a1a] !border-[#3a3a3a] !rounded-2xl !shadow-2xl !overflow-hidden backdrop-blur-sm" 
@@ -1419,136 +983,40 @@ function ConversationCanvasInner({
 
         {/* Empty canvas state */}
         {nodes.length === 0 && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center z-10 px-6">
-            <div className="text-center mb-10">
-              <h1 className="text-2xl font-semibold text-[#ececec] mb-2">{welcomeMessage}</h1>
-              <p className="text-base text-[#8e8e8e] max-w-2xl mx-auto whitespace-nowrap">Ask multiple follow-ups on any response without losing your thread</p>
-            </div>
-            <div className="w-full max-w-2xl">
-              <div className="relative">
-                <Input
-                  type="text"
-                  placeholder="Type your question..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && searchTerm.trim() && !isLoading) {
-                      handleStartConversation();
-                    }
-                  }}
-                  disabled={isLoading}
-                  className="w-full h-14 bg-[#2a2a2a] border border-[#4a4a4a] text-[#ececec] placeholder:text-[#6e6e6e] rounded-xl px-5 pr-14 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-[#00D5FF]/50 transition-colors text-base touch-manipulation"
-                  style={{ fontSize: '16px' }}
-                />
-                {isLoading ? (
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                    <div className="w-5 h-5 border-2 border-[#4a4a4a] border-t-[#00D5FF] rounded-full animate-spin"></div>
-                  </div>
-                ) : (
-                  <Button
-                    onClick={handleStartConversation}
-                    disabled={!searchTerm.trim()}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 h-9 w-9 p-0 rounded-lg bg-[#00D5FF] hover:bg-[#00B8E6] text-[#0d0d0d] disabled:opacity-30 disabled:bg-[#4a4a4a] disabled:cursor-not-allowed transition-all flex items-center justify-center touch-manipulation"
-                    aria-label="Send message"
-                  >
-                    <ArrowUp className="w-5 h-5" strokeWidth={2.5} />
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
+          <CanvasEmptyState
+            welcomeMessage={welcomeMessage}
+            searchTerm={searchTerm}
+            onSearchTermChange={setSearchTerm}
+            onStartConversation={handleStartConversation}
+            isLoading={isLoading}
+          />
         )}
 
 
         </ReactFlow>
       )}
 
-      <Dialog open={isAddingFollowUp} onOpenChange={setIsAddingFollowUp}>
-        <DialogContent className="bg-[#2f2f2f] border border-[#4d4d4d] rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-[#ececec] font-semibold text-lg">Add Follow-up Question</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <Input
-              placeholder="Enter your follow-up question..."
-              value={followUpQuestion}
-              onChange={(e) => setFollowUpQuestion(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSubmitFollowUp();
-                }
-              }}
-              disabled={isLoading}
-              className="bg-[#212121] border border-[#4d4d4d] text-[#ececec] placeholder:text-[#8e8e8e] focus:border-[#565656] focus:ring-0 rounded-lg"
-            />
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setIsAddingFollowUp(false)} disabled={isLoading} className="border-[#4d4d4d] text-[#ececec] hover:bg-[#212121] rounded-lg">
-                Cancel
-              </Button>
-              <Button onClick={handleSubmitFollowUp} disabled={isLoading || !followUpQuestion.trim()} className="bg-[#ececec] hover:bg-[#d4d4d4] text-[#0d0d0d] rounded-lg font-medium">
-                {isLoading ? 'Sending...' : 'Send'}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <FollowUpDialog
+        open={isAddingFollowUp}
+        onOpenChange={setIsAddingFollowUp}
+        followUpQuestion={followUpQuestion}
+        onFollowUpQuestionChange={setFollowUpQuestion}
+        onSubmit={handleSubmitFollowUp}
+        isLoading={isLoading}
+      />
+
+      <ExitConfirmationDialog
+        open={showExitConfirmation}
+        onOpenChange={setShowExitConfirmation}
+        onConfirmExit={() => {
+          setShowExitConfirmation(false);
+          exitFullscreenMode(true);
+        }}
+      />
 
 
-      {/* Exit confirmation dialog */}
-      <Dialog open={showExitConfirmation} onOpenChange={setShowExitConfirmation}>
-        <DialogContent className="bg-[#2f2f2f] border border-[#4d4d4d] rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-[#ececec] font-semibold text-lg">Exit Fullscreen?</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-[#ececec] text-sm">
-              AI is still generating a response. If you exit now, the response will be cancelled.
-            </p>
-            <div className="flex gap-2 justify-end">
-              <Button 
-                variant="outline" 
-                onClick={() => setShowExitConfirmation(false)} 
-                className="border-[#4d4d4d] text-[#ececec] hover:bg-[#212121] rounded-lg"
-              >
-                Stay
-              </Button>
-              <Button 
-                onClick={() => {
-                  setShowExitConfirmation(false);
-                  exitFullscreenMode(true);
-                }} 
-                className="bg-red-700 hover:bg-red-600 text-white rounded-lg font-medium"
-              >
-                Exit Anyway
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-
-      {/* Undo Delete Toast - positioned relative to canvas, not entire screen */}
-      <div 
-        className={`absolute bottom-6 left-1/2 -translate-x-1/2 z-50 transition-all duration-500 ease-out ${
-          showUndoToast 
-            ? 'opacity-100 translate-y-0 scale-100' 
-            : 'opacity-0 translate-y-4 scale-95 pointer-events-none'
-        }`}
-      >
-        <div className="bg-[#2f2f2f] border border-[#4d4d4d] rounded-xl shadow-2xl px-6 py-4 flex items-center gap-4 backdrop-blur-sm">
-          <span className="text-[#ececec] text-sm font-medium">
-            Node deleted
-          </span>
-          <Button
-            onClick={handleUndoDelete}
-            className="h-8 px-4 bg-[#ececec] hover:bg-[#d4d4d4] text-[#0d0d0d] rounded-lg font-medium text-sm flex items-center gap-2 transition-all duration-200 hover:scale-105 active:scale-95"
-          >
-            <Undo2 className="w-3.5 h-3.5" />
-            Undo
-          </Button>
-        </div>
-      </div>
+      {/* Undo Delete Toast */}
+      <UndoToast show={showUndoToast} onUndo={handleUndoDelete} />
     </div>
   );
 }
