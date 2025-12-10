@@ -24,7 +24,7 @@
      * - disabled: inactive elements
      * 
      * INTERACTIVE STATES:
-     * - action: primary buttons, main CTAs (cyan)
+     * - action: primary buttons, main CTAs (muted red)
      * - subtle: secondary buttons, less important actions
      * - ghost: tertiary actions, icon buttons
      * 
@@ -46,7 +46,7 @@
     --border-subtle: 222 20% 16%;    /* barely visible separation */
     --border-default: 220 18% 22%;   /* standard borders */
     --border-strong: 218 16% 28%;    /* emphasized borders */
-    --border-focus: 199 89% 48%;     /* focus rings only */
+    --border-focus: 0 65% 55%;       /* focus rings - muted red */
     
     /* TEXT HIERARCHY - Warm grays for readability */
     --text-primary: 210 25% 96%;     /* #f3f5f7 - headings, important */
@@ -54,10 +54,10 @@
     --text-tertiary: 218 14% 55%;    /* #7d8694 - labels, hints */
     --text-disabled: 220 12% 45%;    /* #6b7280 - inactive, still readable */
     
-    /* ACTION COLORS - Cyan for primary actions ONLY */
-    --action-primary: 199 89% 48%;       /* #0ea5e9 - main CTA */
-    --action-primary-hover: 199 89% 42%; /* darker on hover */
-    --action-primary-text: 224 32% 6%;   /* dark text on cyan */
+    /* ACTION COLORS - Muted red for primary actions */
+    --action-primary: 0 65% 55%;         /* #d94f4f - muted red */
+    --action-primary-hover: 0 65% 48%;   /* darker on hover */
+    --action-primary-text: 210 25% 96%;  /* light text on red */
     
     /* SUBTLE ACTIONS - For secondary importance */
     --action-subtle-bg: 222 25% 14%;
@@ -284,7 +284,7 @@ html {
   }
 }
 
-/* Focus styles - ONLY place cyan appears for focus */
+/* Focus styles - muted red for focus */
 *:focus-visible {
   outline: 2px solid hsl(var(--border-focus));
   outline-offset: 2px;

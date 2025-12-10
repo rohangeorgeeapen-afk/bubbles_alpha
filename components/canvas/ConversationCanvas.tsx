@@ -12,13 +12,11 @@ import {
   Node,
   Edge,
   BackgroundVariant,
-  useReactFlow,
   ReactFlowProvider,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import ConversationNode, { ConversationNodeData } from './ConversationNode';
 import { getLayoutedElements } from '@/lib/utils/layout';
-import { ViewportManager } from '@/lib/utils/viewport-manager';
 import FullscreenChatView from './FullscreenChatView';
 
 // Extracted components
@@ -42,7 +40,26 @@ function ConversationCanvasInner({
   sidebarOpen = true
 }: ConversationCanvasProps = {}) {
   console.log('🎨 ConversationCanvas: Rendering with', { nodeCount: initialNodes.length, edgeCount: initialEdges.length });
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node>(initialNodes);
+  
+  // Fix any stuck streaming nodes on mount (nodes that were saved mid-stream)
+  const fixedInitialNodes = React.useMemo(() => {
+    return initialNodes.map(node => {
+      if (node.data?.isStreaming) {
+        console.warn(`⚠️ Fixing stuck streaming node on mount: ${node.id}`);
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            isStreaming: false,
+            response: node.data.response || 'Response was interrupted. Please try again.',
+          }
+        };
+      }
+      return node;
+    });
+  }, [initialNodes]);
+  
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node>(fixedInitialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialEdges);
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddingFollowUp, setIsAddingFollowUp] = useState(false);
@@ -274,14 +291,21 @@ function ConversationCanvasInner({
   // Notify parent of changes - strip out functions before saving
   // Use a ref to track the last saved state to avoid infinite loops
   const lastSavedState = useRef<string>('');
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   useEffect(() => {
     if (onUpdate) {
-      // Create a hash of the current state
+      // Create a hash of the current state including node data
       const currentState = JSON.stringify({ 
         nodeIds: nodes.map(n => n.id),
         edgeIds: edges.map(e => e.id),
-        nodeCount: nodes.length 
+        nodeCount: nodes.length,
+        // Include response data and streaming state to trigger saves
+        nodeData: nodes.map(n => ({
+          id: n.id,
+          response: n.data?.response || '',
+          isStreaming: n.data?.isStreaming || false,
+        })),
       });
       
       // Only update if state actually changed
@@ -297,10 +321,54 @@ function ConversationCanvasInner({
             onMaximize: undefined, // Remove function
           }
         }));
-        onUpdate(serializableNodes, edges);
+        
+        // Check if any node is currently streaming
+        const isAnyStreaming = nodes.some(n => n.data?.isStreaming);
+        
+        // Clear any pending save
+        if (saveTimeoutRef.current) {
+          clearTimeout(saveTimeoutRef.current);
+        }
+        
+        if (isAnyStreaming) {
+          // During streaming, debounce saves to every 2 seconds
+          saveTimeoutRef.current = setTimeout(() => {
+            onUpdate(serializableNodes, edges);
+          }, 2000);
+        } else {
+          // Not streaming - save immediately
+          onUpdate(serializableNodes, edges);
+        }
       }
     }
+    
   }, [nodes, edges, onUpdate]);
+  
+  // Save pending changes on unmount (e.g., when switching canvases)
+  useEffect(() => {
+    return () => {
+      // Clear any pending debounced save
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+      
+      // Save current state immediately on unmount
+      if (onUpdate && nodesRef.current.length > 0) {
+        const serializableNodes = nodesRef.current.map(node => ({
+          ...node,
+          data: {
+            ...node.data,
+            onAddFollowUp: undefined,
+            onMaximize: undefined,
+            // Mark any streaming nodes as interrupted
+            isStreaming: false,
+          }
+        }));
+        onUpdate(serializableNodes, edgesRef.current);
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Helper to update a specific node's data
   const updateNodeData = useCallback((nodeId: string, updates: Partial<ConversationNodeData>) => {
@@ -663,6 +731,7 @@ function ConversationCanvasInner({
           question,
           response: aiResponse,
           timestamp,
+          isStreaming: false, // Explicitly set to false since response is already complete
           onAddFollowUp: async (nId: string, q: string) => {
             await createConversationNodeRef.current(q, nId);
           },
