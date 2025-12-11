@@ -22,8 +22,9 @@ const config: Config = {
         /* SEMANTIC COLOR SYSTEM */
         
         // Depth layers - for backgrounds
+        // Note: Using 'app-base' instead of 'base' to avoid collision with Tailwind's text-base font-size utility
         void: 'hsl(var(--void))',
-        base: 'hsl(var(--base))',
+        'app-base': 'hsl(var(--base))',
         surface: 'hsl(var(--surface))',
         elevated: 'hsl(var(--elevated))',
         overlay: 'hsl(var(--overlay))',

@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
 import { Plus, Trash2, PanelLeftClose, PanelLeft, User, LogOut, Pencil, Check, X, Search, AlertTriangle } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
@@ -128,7 +127,7 @@ export default function Sidebar({
                 <h1 
                   className="text-xl font-bold tracking-tight" 
                   style={{ 
-                    fontFamily: 'Helvetica, Arial, sans-serif', 
+                    fontFamily: '"Montserrat", sans-serif', 
                     fontWeight: 700, 
                     backgroundImage: 'linear-gradient(to bottom, #ffffff 30%, #e0f2fe 70%)',
                     backgroundClip: 'text',
@@ -145,9 +144,9 @@ export default function Sidebar({
               </div>
             </div>
             {/* Ghost button - minimal visual weight */}
-            <Button onClick={onToggle} className="bg-transparent hover:bg-action-ghost-hover text-text-tertiary hover:text-text-secondary rounded-md p-2 border-0 flex-shrink-0" size="sm">
+            <button onClick={onToggle} className="btn-icon flex-shrink-0" aria-label="Close sidebar">
               <PanelLeftClose className="w-5 h-5" />
-            </Button>
+            </button>
           </div>
           
           {isSearching ? (
@@ -159,19 +158,19 @@ export default function Sidebar({
                 className="flex-1 h-10 bg-surface border-border-default text-text-primary placeholder:text-text-disabled focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-border-focus"
                 autoFocus
               />
-              <button onClick={handleToggleSearch} className="flex-shrink-0 bg-surface text-text-tertiary rounded-md border border-border-default h-10 w-10 transition-colors flex items-center justify-center hover:bg-elevated hover:text-text-secondary" title="Close search">
+              <button onClick={handleToggleSearch} className="btn-secondary h-10 w-10 flex items-center justify-center" title="Close search">
                 <X className="w-4 h-4" strokeWidth={2} />
               </button>
             </div>
           ) : (
             <div className="flex gap-2">
               {/* Primary action button */}
-              <button onClick={handleNewCanvasClick} className="flex-1 bg-action-primary text-action-primary-text rounded-md font-medium text-sm h-10 whitespace-nowrap overflow-hidden transition-colors flex items-center justify-center hover:bg-action-primary-hover touch-manipulation relative">
-                <Plus className="w-4 h-4 absolute left-3" strokeWidth={2} />
+              <button onClick={handleNewCanvasClick} className="btn-primary flex-1 h-10 text-sm flex items-center justify-center gap-2 touch-manipulation">
+                <Plus className="w-4 h-4" strokeWidth={2.5} />
                 <span>New canvas</span>
               </button>
               {/* Secondary action - subtle styling */}
-              <button onClick={handleToggleSearch} className="flex-shrink-0 bg-surface text-text-tertiary rounded-md border border-border-default h-10 w-10 transition-colors flex items-center justify-center hover:bg-elevated hover:text-text-secondary touch-manipulation" title="Search">
+              <button onClick={handleToggleSearch} className="btn-secondary h-10 w-10 flex items-center justify-center touch-manipulation" title="Search">
                 <Search className="w-4 h-4" strokeWidth={2} />
               </button>
             </div>
@@ -262,9 +261,9 @@ export default function Sidebar({
 
       {/* Toggle button when closed */}
       {!isOpen && (
-        <Button onClick={onToggle} className="fixed top-3 left-3 z-[60] bg-surface hover:bg-elevated text-text-secondary rounded-md p-2 border border-border-default shadow-depth-md" size="sm" aria-label="Open sidebar">
+        <button onClick={onToggle} className="fixed top-3 left-3 z-[60] btn-secondary p-2.5 shadow-depth-md animate-fade-in" aria-label="Open sidebar">
           <PanelLeft className="w-5 h-5" />
-        </Button>
+        </button>
       )}
 
       {/* Delete Dialog - uses error semantic color */}
@@ -282,12 +281,12 @@ export default function Sidebar({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => { setDeleteDialogOpen(false); setCanvasToDelete(null); }} className="bg-transparent border-border-default text-text-secondary hover:bg-elevated">
+            <button onClick={() => { setDeleteDialogOpen(false); setCanvasToDelete(null); }} className="btn-secondary px-4 py-2 text-sm">
               Cancel
-            </Button>
-            <Button onClick={() => { if (canvasToDelete) { setDeletingCanvasId(canvasToDelete.id); setDeleteDialogOpen(false); setTimeout(() => { onDeleteCanvas(canvasToDelete.id); setDeletingCanvasId(null); setCanvasToDelete(null); }, 300); }}} className="bg-error text-white hover:bg-error/90">
+            </button>
+            <button onClick={() => { if (canvasToDelete) { setDeletingCanvasId(canvasToDelete.id); setDeleteDialogOpen(false); setTimeout(() => { onDeleteCanvas(canvasToDelete.id); setDeletingCanvasId(null); setCanvasToDelete(null); }, 300); }}} className="btn-danger px-4 py-2 text-sm">
               Delete
-            </Button>
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -305,12 +304,12 @@ export default function Sidebar({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setSignOutDialogOpen(false)} className="bg-transparent border-border-default text-text-secondary hover:bg-elevated">
+            <button onClick={() => setSignOutDialogOpen(false)} className="btn-secondary px-4 py-2 text-sm">
               Cancel
-            </Button>
-            <Button onClick={() => { setSignOutDialogOpen(false); onSignOut?.(); }} className="bg-warning text-action-primary-text hover:bg-warning/90">
+            </button>
+            <button onClick={() => { setSignOutDialogOpen(false); onSignOut?.(); }} className="btn-primary px-4 py-2 text-sm bg-warning hover:bg-warning/90">
               Sign Out
-            </Button>
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -17,7 +17,7 @@ export default function MarkdownContent({ content, className = '' }: MarkdownCon
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeRaw]}
         components={{
-          p: ({ children }) => <p className="mb-4 last:mb-0 leading-relaxed">{children}</p>,
+          p: ({ children }) => <p className="mb-4 last:mb-0 leading-relaxed text-inherit">{children}</p>,
           h1: ({ children }) => <h1 className="text-lg font-semibold mb-4 mt-5 text-text-primary leading-snug">{children}</h1>,
           h2: ({ children }) => <h2 className="text-base font-semibold mb-3 mt-4 text-text-primary leading-snug">{children}</h2>,
           h3: ({ children }) => <h3 className="text-[15px] font-semibold mb-3 mt-3 text-text-primary leading-snug">{children}</h3>,

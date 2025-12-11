@@ -517,8 +517,19 @@ function ConversationCanvasInner({
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`API error: ${response.status} ${errorText}`);
+        // Try to get a clean error message, but don't include raw HTML/JSON payloads
+        let errorMessage = `Request failed (${response.status})`;
+        try {
+          const errorText = await response.text();
+          // Only use the error text if it's a clean JSON error message
+          if (errorText.startsWith('{')) {
+            const errorJson = JSON.parse(errorText);
+            if (errorJson.error) errorMessage = errorJson.error;
+          } else if (errorText.length < 200 && !errorText.includes('<')) {
+            errorMessage = errorText;
+          }
+        } catch { /* ignore parsing errors */ }
+        throw new Error(errorMessage);
       }
 
       const reader = response.body?.getReader();
@@ -855,9 +866,20 @@ function ConversationCanvasInner({
       console.log('Response status:', response.status);
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API error response:', errorText);
-        throw new Error(`API error (${response.status}): ${errorText || 'Unknown error'}`);
+        // Try to get a clean error message, but don't include raw HTML/JSON payloads
+        let errorMessage = `Request failed (${response.status})`;
+        try {
+          const errorText = await response.text();
+          console.error('API error response:', errorText.substring(0, 200));
+          // Only use the error text if it's a clean JSON error message
+          if (errorText.startsWith('{')) {
+            const errorJson = JSON.parse(errorText);
+            if (errorJson.error) errorMessage = errorJson.error;
+          } else if (errorText.length < 200 && !errorText.includes('<')) {
+            errorMessage = errorText;
+          }
+        } catch { /* ignore parsing errors */ }
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
@@ -897,10 +919,12 @@ function ConversationCanvasInner({
         } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
           errorMessage = 'Network error. Please check your connection and try again.';
           isNetworkError = true;
-        } else if (error.message.includes('API error')) {
+        } else if (error.message.includes('Request failed')) {
           errorMessage = `${error.message}. Please try again.`;
         } else {
-          errorMessage = `Error: ${error.message}. Please try again.`;
+          // Keep error messages short and user-friendly
+          const msg = error.message.length > 100 ? error.message.substring(0, 100) + '...' : error.message;
+          errorMessage = `Error: ${msg}. Please try again.`;
         }
       }
       
@@ -932,22 +956,6 @@ function ConversationCanvasInner({
       abortControllerRef.current = null;
     }
   }, [fullscreenState.activeNodeId, fullscreenState.conversationThread, createNodeInBackground, isOnline]);
-
-  // Handle retry for failed messages
-  const handleRetryMessage = useCallback(async (messageId: string) => {
-    // Find the error message
-    const errorMessage = fullscreenState.conversationThread.find(m => m.id === messageId);
-    if (!errorMessage || !errorMessage.retryData) return;
-    
-    // Remove the error message from the thread
-    setFullscreenState(prev => ({
-      ...prev,
-      conversationThread: prev.conversationThread.filter(m => m.id !== messageId),
-    }));
-    
-    // Retry sending the message
-    await handleFullscreenMessage(errorMessage.retryData.userMessage);
-  }, [fullscreenState.conversationThread, handleFullscreenMessage]);
 
   // Restore callbacks to nodes on mount
   useEffect(() => {
@@ -1106,7 +1114,6 @@ function ConversationCanvasInner({
             onSendMessage={handleFullscreenMessage}
             onClose={exitFullscreenMode}
             isLoading={isFullscreenLoading}
-            onRetry={handleRetryMessage}
             isTransitioning={fullscreenState.isTransitioning}
             sidebarOpen={sidebarOpen}
           />

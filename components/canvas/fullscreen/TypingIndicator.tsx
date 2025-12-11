@@ -21,16 +21,38 @@ export default function TypingIndicator() {
             <span className="text-text-tertiary text-sm">Thinking...</span>
           ) : (
             <>
-              {/* Palantir-style geometric loader */}
-              <div className="relative w-5 h-5">
-                {/* Outer ring */}
-                <div className="absolute inset-0 border border-text-tertiary/30 rounded-full animate-[spin_3s_linear_infinite]" />
-                {/* Middle ring */}
-                <div className="absolute inset-[3px] border border-text-tertiary/50 rounded-full animate-[spin_2s_linear_infinite_reverse]" />
-                {/* Inner dot */}
-                <div className="absolute inset-[6px] bg-text-tertiary/70 rounded-full animate-pulse" />
+              {/* Smooth bouncing dots */}
+              <div className="flex items-center gap-1">
+                <div 
+                  className="w-2 h-2 bg-action-primary rounded-full"
+                  style={{
+                    animation: 'thinking-bounce 1.4s ease-in-out infinite',
+                    animationDelay: '0ms',
+                  }}
+                />
+                <div 
+                  className="w-2 h-2 bg-action-primary rounded-full"
+                  style={{
+                    animation: 'thinking-bounce 1.4s ease-in-out infinite',
+                    animationDelay: '160ms',
+                  }}
+                />
+                <div 
+                  className="w-2 h-2 bg-action-primary rounded-full"
+                  style={{
+                    animation: 'thinking-bounce 1.4s ease-in-out infinite',
+                    animationDelay: '320ms',
+                  }}
+                />
               </div>
-              <span className="text-sm text-text-tertiary animate-pulse">Thinking...</span>
+              <span 
+                className="text-sm text-text-secondary"
+                style={{
+                  animation: 'thinking-fade 2s ease-in-out infinite',
+                }}
+              >
+                Thinking
+              </span>
             </>
           )}
         </div>

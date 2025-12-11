@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { Button } from '@/components/ui/button';
+import React, { useRef, useEffect, useState } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { ArrowUp } from 'lucide-react';
 
@@ -139,11 +138,11 @@ export default function ChatInput({
           rows={1}
         />
         <span id="chat-input-help" className="sr-only">Press Enter to send, Shift+Enter for new line, Escape to close</span>
-        <Button
+        <button
           onClick={handleSubmit}
           disabled={!canSend}
           aria-label={isSubmitting || isLoading ? 'Sending message' : 'Send message'}
-          className={`absolute right-2 top-1/2 -translate-y-1/2 h-9 w-9 p-0 rounded-md bg-action-primary hover:bg-action-primary-hover text-action-primary-text disabled:opacity-30 disabled:bg-elevated disabled:cursor-not-allowed ${prefersReducedMotion ? '' : 'transition-colors'} flex items-center justify-center`}
+          className="absolute right-2 top-1/2 -translate-y-1/2 h-9 w-9 btn-primary p-0 flex items-center justify-center disabled:opacity-30 disabled:bg-elevated disabled:cursor-not-allowed disabled:active:scale-100"
           title="Send message (Enter)"
         >
           {isSubmitting || isLoading ? (
@@ -151,7 +150,7 @@ export default function ChatInput({
           ) : (
             <ArrowUp className="w-4 h-4" strokeWidth={2.5} />
           )}
-        </Button>
+        </button>
       </div>
     </div>
   );

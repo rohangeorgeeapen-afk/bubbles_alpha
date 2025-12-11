@@ -29,7 +29,7 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-base overflow-y-auto">
+    <div className="min-h-screen bg-app-base overflow-y-auto">
       {/* Hero Section */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 md:px-8 pt-16 sm:pt-20 md:pt-32 pb-20 md:pb-24 border-b border-border-subtle relative">
         <div className="mb-8 md:mb-12">
@@ -186,7 +186,7 @@ function FeaturesSection() {
               />
             </div>
             <h3 className="text-text-primary text-lg sm:text-xl font-semibold mb-3">{feature.title}</h3>
-            <p className="text-text-tertiary text-sm sm:text-base leading-relaxed">{feature.description}</p>
+            <p className="text-text-secondary text-sm sm:text-base leading-relaxed">{feature.description}</p>
           </div>
         ))}
       </div>

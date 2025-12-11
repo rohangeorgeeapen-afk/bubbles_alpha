@@ -20,6 +20,19 @@ export function useCanvasData({ userId, onAuthError }: UseCanvasDataOptions) {
   const [currentCanvasId, setCurrentCanvasId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasInitialized, setHasInitialized] = useState(false);
+  
+  // Handle userId changes - reset initialization when user changes
+  useEffect(() => {
+    if (!userId) {
+      // No user - stop loading but don't mark as initialized
+      // so that when user logs in, canvases will be loaded
+      setLoading(false);
+    } else {
+      // User changed - reset so canvases will be reloaded
+      setHasInitialized(false);
+      setLoading(true);
+    }
+  }, [userId]);
 
   // Load canvases from Supabase
   const loadCanvases = useCallback(async (isInitialLoad = false) => {
@@ -37,6 +50,7 @@ export function useCanvasData({ userId, onAuthError }: UseCanvasDataOptions) {
       const { data, error } = await supabase
         .from('canvases')
         .select('*')
+        .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
       if (error) {

@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { checkRateLimit, getRateLimitIdentifier } from '@/lib/rate-limit';
-import { createClient } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -75,6 +73,25 @@ AVOID:
 
 Be engaging AND substantive.`;
 
+// Convert messages to Gemini format
+function convertToGeminiFormat(messages: Message[]) {
+  const contents: { role: string; parts: { text: string }[] }[] = [];
+  let systemInstruction = '';
+  
+  for (const msg of messages) {
+    if (msg.role === 'system') {
+      systemInstruction += msg.content + '\n';
+    } else {
+      contents.push({
+        role: msg.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: msg.content }]
+      });
+    }
+  }
+  
+  return { contents, systemInstruction: systemInstruction.trim() };
+}
+
 export async function POST(request: NextRequest) {
   try {
     let body: unknown;
@@ -100,22 +117,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Rate limiting
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
-    const identifier = getRateLimitIdentifier(user?.id, ip);
-    const maxRequests = user ? 100 : 20;
-    const rateLimit = checkRateLimit(identifier, maxRequests);
-    
-    if (!rateLimit.allowed) {
-      const minutesUntilReset = Math.ceil((rateLimit.resetTime - Date.now()) / 60000);
-      return NextResponse.json(
-        { error: `Rate limit reached. Try again in ${minutesUntilReset} minutes.` },
-        { status: 429 }
-      );
-    }
-
     const geminiApiKey = process.env.GEMINI_API_KEY;
     const perplexityApiKey = process.env.PERPLEXITY_API_KEY;
 
@@ -124,123 +125,114 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ response: mockResponse });
     }
 
+    // Add system prompt to messages
     const messagesWithSystem = [{ role: 'system' as const, content: SYSTEM_PROMPT }, ...messages];
+    const { contents, systemInstruction } = convertToGeminiFormat(messagesWithSystem);
 
-    // STREAMING RESPONSE
-    if (stream && geminiApiKey) {
-      const response = await fetch(
-        'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${geminiApiKey}`,
-          },
-          body: JSON.stringify({
-            model: 'gemini-2.0-flash',
-            messages: messagesWithSystem,
-            temperature: 0.7,
-            top_p: 0.9,
-            stream: true,
-          }),
+    // Use native Gemini API (more reliable than OpenAI-compatible endpoint)
+    if (geminiApiKey) {
+      const model = 'gemini-2.5-flash';
+      const endpoint = stream 
+        ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${geminiApiKey}&alt=sse`
+        : `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`;
+      
+      const requestBody: any = {
+        contents,
+        generationConfig: {
+          temperature: 0.7,
+          topP: 0.9,
         }
-      );
+      };
+      
+      if (systemInstruction) {
+        requestBody.systemInstruction = { parts: [{ text: systemInstruction }] };
+      }
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+      });
 
       if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Gemini API error:', errorData);
+        
         if (response.status === 429) {
-          return NextResponse.json({ error: 'AI is busy. Please wait and try again.' }, { status: 429 });
+          return NextResponse.json({ error: 'Rate limit reached. Please wait and try again.' }, { status: 429 });
+        }
+        if (response.status === 503) {
+          return NextResponse.json({ error: 'AI service is temporarily busy. Please try again.' }, { status: 503 });
         }
         return NextResponse.json({ error: 'AI request failed.' }, { status: 500 });
       }
 
-      // Return streaming response
-      const encoder = new TextEncoder();
-      const readable = new ReadableStream({
-        async start(controller) {
-          const reader = response.body?.getReader();
-          if (!reader) {
-            controller.close();
-            return;
-          }
+      // STREAMING RESPONSE
+      if (stream) {
+        const encoder = new TextEncoder();
+        const readable = new ReadableStream({
+          async start(controller) {
+            const reader = response.body?.getReader();
+            if (!reader) {
+              controller.close();
+              return;
+            }
 
-          const decoder = new TextDecoder();
-          let buffer = '';
+            const decoder = new TextDecoder();
+            let buffer = '';
 
-          try {
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
+            try {
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
 
-              buffer += decoder.decode(value, { stream: true });
-              const lines = buffer.split('\n');
-              buffer = lines.pop() || '';
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
 
-              for (const line of lines) {
-                if (line.startsWith('data: ')) {
-                  const data = line.slice(6);
-                  if (data === '[DONE]') {
-                    controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-                    continue;
-                  }
-                  try {
-                    const parsed = JSON.parse(data);
-                    const content = parsed.choices?.[0]?.delta?.content;
-                    if (content) {
-                      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
+                for (const line of lines) {
+                  if (line.startsWith('data: ')) {
+                    const data = line.slice(6);
+                    if (data === '[DONE]') {
+                      controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+                      continue;
                     }
-                  } catch {
-                    // Skip malformed JSON
+                    try {
+                      const parsed = JSON.parse(data);
+                      const content = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+                      if (content) {
+                        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
+                      }
+                    } catch {
+                      // Skip malformed JSON
+                    }
                   }
                 }
               }
+            } catch (error) {
+              console.error('Stream error:', error);
+            } finally {
+              controller.close();
             }
-          } catch (error) {
-            console.error('Stream error:', error);
-          } finally {
-            controller.close();
-          }
-        },
-      });
-
-      return new Response(readable, {
-        headers: {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive',
-        },
-      });
-    }
-
-    // NON-STREAMING RESPONSE (fallback)
-    if (geminiApiKey) {
-      const response = await fetch(
-        'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${geminiApiKey}`,
           },
-          body: JSON.stringify({
-            model: 'gemini-2.0-flash',
-            messages: messagesWithSystem,
-            temperature: 0.7,
-            top_p: 0.9,
-          }),
-        }
-      );
+        });
 
-      if (!response.ok) {
-        if (response.status === 429) {
-          return NextResponse.json({ error: 'AI is busy. Please wait.' }, { status: 429 });
-        }
-        return NextResponse.json({ error: 'AI request failed.' }, { status: 500 });
+        return new Response(readable, {
+          headers: {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+          },
+        });
       }
 
+      // NON-STREAMING RESPONSE
       const data = await response.json();
-      return NextResponse.json({ response: data.choices[0].message.content });
+      const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response generated.';
+      return NextResponse.json({ response: responseText });
     }
 
+    // Perplexity fallback
     if (perplexityApiKey) {
       const response = await fetch('https://api.perplexity.ai/chat/completions', {
         method: 'POST',

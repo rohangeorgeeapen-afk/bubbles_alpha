@@ -1,7 +1,6 @@
 "use client";
 
 import React from 'react';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ArrowUp } from 'lucide-react';
 
@@ -51,14 +50,14 @@ export default function CanvasEmptyState({
               <div className="w-5 h-5 border-2 border-border-strong border-t-action-primary rounded-full animate-spin" />
             </div>
           ) : (
-            <Button
+            <button
               onClick={onStartConversation}
               disabled={!searchTerm.trim()}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 h-9 w-9 p-0 rounded-md bg-action-primary hover:bg-action-primary-hover text-action-primary-text disabled:opacity-30 disabled:bg-elevated disabled:cursor-not-allowed transition-colors flex items-center justify-center touch-manipulation"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 h-9 w-9 btn-primary p-0 flex items-center justify-center touch-manipulation disabled:opacity-30 disabled:bg-elevated disabled:cursor-not-allowed disabled:active:scale-100"
               aria-label="Send message"
             >
               <ArrowUp className="w-5 h-5" strokeWidth={2.5} />
-            </Button>
+            </button>
           )}
         </div>
       </div>

@@ -4,7 +4,6 @@ import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react'
 import { Button } from '@/components/ui/button';
 import { X, ArrowDown, Minimize2 } from 'lucide-react';
 import ChatInput from './ChatInput';
-import TypingIndicator from './fullscreen/TypingIndicator';
 import MessagePair from './fullscreen/MessagePair';
 
 interface Message {
@@ -21,7 +20,6 @@ interface FullscreenChatViewProps {
   onSendMessage: (message: string) => Promise<void>;
   onClose: () => void;
   isLoading: boolean;
-  onRetry?: (messageId: string) => Promise<void>;
   isTransitioning?: boolean;
   sidebarOpen?: boolean;
 }
@@ -31,7 +29,6 @@ export default function FullscreenChatView({
   onSendMessage,
   onClose,
   isLoading,
-  onRetry,
   isTransitioning = false,
   sidebarOpen = true,
 }: FullscreenChatViewProps) {
@@ -226,7 +223,7 @@ export default function FullscreenChatView({
 
   return (
     <div 
-      className="absolute inset-0 z-50 bg-base flex flex-col"
+      className="absolute inset-0 z-50 bg-app-base flex flex-col"
       role="dialog"
       aria-label="Maximized chat conversation"
       aria-modal="true"
@@ -293,8 +290,8 @@ export default function FullscreenChatView({
               question: string;
               answer: string;
               isError?: boolean;
-              messageId?: string;
               key: string;
+              isLoading?: boolean;
             }> = [];
             
             // Group messages into pairs
@@ -309,15 +306,15 @@ export default function FullscreenChatView({
                     question: userMsg.content,
                     answer: assistantMsg.content,
                     isError: assistantMsg.isError,
-                    messageId: assistantMsg.id,
                     key: `pair-${userMsg.id || i}`,
                   });
                 } else {
-                  // User message without response yet (shouldn't happen in normal flow)
+                  // User message without response yet - show loading indicator inside
                   pairs.push({
                     question: userMsg.content,
                     answer: '',
                     key: `pair-${userMsg.id || i}`,
+                    isLoading: isLoading,
                   });
                 }
               }
@@ -329,8 +326,7 @@ export default function FullscreenChatView({
                 question={pair.question}
                 answer={pair.answer}
                 isError={pair.isError}
-                messageId={pair.messageId}
-                onRetry={onRetry}
+                isLoading={pair.isLoading}
               />
             ));
           })()}
@@ -339,8 +335,6 @@ export default function FullscreenChatView({
           {useVirtualScrolling && bottomOffset > 0 && (
             <div style={{ height: `${bottomOffset}px` }} />
           )}
-          
-          {isLoading && <TypingIndicator />}
           <div ref={messagesEndRef} />
         </div>
 

@@ -48,7 +48,6 @@ export default function CanvasManager() {
   // Load canvases on mount
   useEffect(() => {
     if (authLoading) return;
-
     if (!user) return;
 
     if (!hasInitialized) {
@@ -77,7 +76,7 @@ export default function CanvasManager() {
   // Loading state
   if (authLoading || loading) {
     return (
-      <div className="flex h-screen bg-base items-center justify-center">
+      <div className="flex h-screen bg-app-base items-center justify-center">
         <div className="w-12 h-12 border-4 border-border-default border-t-action-primary rounded-full animate-spin"></div>
       </div>
     );
@@ -98,7 +97,7 @@ export default function CanvasManager() {
 
   // Main app for authenticated users
   return (
-    <div className="flex h-screen bg-base overflow-hidden">
+    <div className="flex h-screen bg-app-base overflow-hidden">
       <Sidebar
         canvases={canvasSummaries}
         currentCanvasId={currentCanvasId}

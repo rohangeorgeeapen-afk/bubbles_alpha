@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, memo } from 'react';
-import { Button } from '@/components/ui/button';
 import { Copy, Check } from 'lucide-react';
 import MarkdownContent from '@/components/shared/MarkdownContent';
 
@@ -9,12 +8,10 @@ interface MessagePairProps {
   question: string;
   answer: string;
   isError?: boolean;
-  messageId?: string;
-  onRetry?: (messageId: string) => Promise<void>;
+  isLoading?: boolean;
 }
 
-const MessagePair = memo(function MessagePair({ question, answer, isError, messageId, onRetry }: MessagePairProps) {
-  const [isRetrying, setIsRetrying] = useState(false);
+const MessagePair = memo(function MessagePair({ question, answer, isError, isLoading }: MessagePairProps) {
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [isResponseHovered, setIsResponseHovered] = useState(false);
@@ -26,12 +23,6 @@ const MessagePair = memo(function MessagePair({ question, answer, isError, messa
     mediaQuery.addEventListener('change', handler);
     return () => mediaQuery.removeEventListener('change', handler);
   }, []);
-
-  const handleRetry = async () => {
-    if (!messageId || !onRetry) return;
-    setIsRetrying(true);
-    try { await onRetry(messageId); } finally { setIsRetrying(false); }
-  };
 
   const handleCopyResponse = async () => {
     try {
@@ -63,7 +54,29 @@ const MessagePair = memo(function MessagePair({ question, answer, isError, messa
         onMouseEnter={() => setIsResponseHovered(true)}
         onMouseLeave={() => setIsResponseHovered(false)}
       >
-        <MarkdownContent content={answer} className="text-base leading-relaxed text-ai-response" />
+        {isLoading && !answer ? (
+          <div className="flex items-center gap-3 py-2">
+            <div className="flex items-center gap-1">
+              <div 
+                className="w-2 h-2 bg-action-primary rounded-full"
+                style={{ animation: 'thinking-bounce 1.4s ease-in-out infinite', animationDelay: '0ms' }}
+              />
+              <div 
+                className="w-2 h-2 bg-action-primary rounded-full"
+                style={{ animation: 'thinking-bounce 1.4s ease-in-out infinite', animationDelay: '160ms' }}
+              />
+              <div 
+                className="w-2 h-2 bg-action-primary rounded-full"
+                style={{ animation: 'thinking-bounce 1.4s ease-in-out infinite', animationDelay: '320ms' }}
+              />
+            </div>
+            <span className="text-sm text-text-secondary" style={{ animation: 'thinking-fade 2s ease-in-out infinite' }}>
+              Thinking
+            </span>
+          </div>
+        ) : (
+          <MarkdownContent content={answer} className="text-base leading-relaxed text-ai-response" />
+        )}
         
         {/* Copy button - ghost action */}
         {answer && (
@@ -79,17 +92,6 @@ const MessagePair = memo(function MessagePair({ question, answer, isError, messa
           </button>
         )}
         
-        {/* Retry button for errors */}
-        {isError && onRetry && messageId && (
-          <Button
-            onClick={handleRetry}
-            disabled={isRetrying}
-            className={`mt-4 h-8 px-3 bg-error hover:bg-error/90 text-white rounded-md text-sm font-medium ${prefersReducedMotion ? '' : 'transition-colors'}`}
-            aria-label="Retry sending message"
-          >
-            {isRetrying ? 'Retrying...' : 'Retry'}
-          </Button>
-        )}
       </div>
     </div>
   );
