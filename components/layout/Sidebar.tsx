@@ -244,14 +244,14 @@ export default function Sidebar({
         <div className="p-3 border-t border-border-subtle flex-shrink-0 space-y-2">
           <div className="text-xs text-text-disabled font-mono">{canvases.length} {canvases.length === 1 ? 'canvas' : 'canvases'}</div>
           {userEmail && (
-            <div className="flex items-center justify-between gap-2 bg-surface rounded-md px-3 py-2 border border-border-subtle">
+            <div className="flex items-center justify-between gap-2 bg-elevated/50 rounded-md px-3 py-2 border border-border-default">
               <div className="flex items-center gap-2 min-w-0 flex-1">
-                <User className="w-4 h-4 text-text-disabled flex-shrink-0" strokeWidth={2} />
+                <User className="w-4 h-4 text-text-tertiary flex-shrink-0" strokeWidth={2} />
                 <span className="text-xs text-text-secondary truncate">{userEmail}</span>
               </div>
               {onSignOut && (
-                <button onClick={() => setSignOutDialogOpen(true)} className="p-1 hover:bg-elevated rounded transition-colors flex-shrink-0" title="Sign out">
-                  <LogOut className="w-4 h-4 text-text-disabled hover:text-text-secondary" strokeWidth={2} />
+                <button onClick={() => setSignOutDialogOpen(true)} className="p-1.5 hover:bg-surface rounded transition-colors flex-shrink-0" title="Sign out">
+                  <LogOut className="w-4 h-4 text-text-tertiary hover:text-text-primary" strokeWidth={2} />
                 </button>
               )}
             </div>
@@ -307,7 +307,7 @@ export default function Sidebar({
             <button onClick={() => setSignOutDialogOpen(false)} className="btn-secondary px-4 py-2 text-sm">
               Cancel
             </button>
-            <button onClick={() => { setSignOutDialogOpen(false); onSignOut?.(); }} className="btn-primary px-4 py-2 text-sm bg-warning hover:bg-warning/90">
+            <button onClick={() => { setSignOutDialogOpen(false); onSignOut?.(); }} className="px-4 py-2 text-sm font-medium rounded-lg bg-warning text-void hover:bg-warning/90 transition-colors">
               Sign Out
             </button>
           </DialogFooter>
