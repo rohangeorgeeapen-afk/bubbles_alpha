@@ -56,12 +56,10 @@ CRITICAL CONTEXT RULES:
 3. DO NOT reference previous context that doesn't exist
 
 When explaining new topics:
-- Start with what makes this interesting or the problem it solves
 - Include meaningful technical detail - don't oversimplify
 - Explain the "how" along with the "why"
 - Share engineering challenges, trade-offs, and constraints
 - Weave in history and human context naturally when relevant
-- Use analogies to clarify, but come back to technical reality
 - Build progressively: start accessible, then add depth
 
 AVOID:
