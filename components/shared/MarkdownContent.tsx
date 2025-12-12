@@ -3,7 +3,10 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
 import rehypeRaw from 'rehype-raw';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 
 interface MarkdownContentProps {
   content: string;
@@ -14,8 +17,8 @@ export default function MarkdownContent({ content, className = '' }: MarkdownCon
   return (
     <div className={`markdown-content ${className}`}>
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeRaw]}
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[rehypeRaw, rehypeKatex]}
         components={{
           p: ({ children }) => <p className="mb-4 last:mb-0 leading-relaxed text-inherit">{children}</p>,
           h1: ({ children }) => <h1 className="text-lg font-semibold mb-4 mt-5 text-text-primary leading-snug">{children}</h1>,

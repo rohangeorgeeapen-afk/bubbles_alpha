@@ -451,3 +451,21 @@ button, a, input, textarea, select {
 input:focus, textarea:focus {
   @apply ring-1 ring-border-focus/30;
 }
+
+
+/* KaTeX math styling */
+.katex {
+  font-size: 1.05em;
+  color: hsl(var(--text-primary));
+}
+
+.katex-display {
+  margin: 1rem 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.5rem 0;
+}
+
+.katex-display > .katex {
+  text-align: left;
+}
