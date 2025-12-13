@@ -447,6 +447,16 @@ button, a, input, textarea, select {
   animation: slide-in-left 0.2s ease-out forwards;
 }
 
+/* Slide up */
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.15s ease-out forwards;
+}
+
 /* Input focus glow */
 input:focus, textarea:focus {
   @apply ring-1 ring-border-focus/30;

@@ -317,8 +317,11 @@ function ConversationCanvasInner({
           ...node,
           data: {
             ...node.data,
-            onAddFollowUp: undefined, // Remove function
-            onMaximize: undefined, // Remove function
+            onAddFollowUp: undefined,
+            onBranchFromSelection: undefined,
+            onNavigateToNode: undefined,
+            onDelete: undefined,
+            onMaximize: undefined,
           }
         }));
         
@@ -359,6 +362,9 @@ function ConversationCanvasInner({
           data: {
             ...node.data,
             onAddFollowUp: undefined,
+            onBranchFromSelection: undefined,
+            onNavigateToNode: undefined,
+            onDelete: undefined,
             onMaximize: undefined,
             // Mark any streaming nodes as interrupted
             isStreaming: false,
@@ -402,9 +408,14 @@ function ConversationCanvasInner({
         response: '',
         timestamp,
         isStreaming: true,
+        exploredSelections: [],
         onAddFollowUp: async (nId: string, q: string) => {
           await createConversationNodeRef.current(q, nId);
         },
+        onBranchFromSelection: async (nId: string, text: string, q: string, start: number, end: number, fromQ: boolean) => {
+          await createBranchFromSelectionRef.current(nId, text, q, start, end, fromQ);
+        },
+        onNavigateToNode: (nId: string) => navigateToNodeRef.current(nId),
         onDelete: (nId: string) => handleDeleteNodeRef.current(nId),
         onMaximize: (nId: string) => enterFullscreenModeRef.current(nId),
         positioned: false,
@@ -446,6 +457,10 @@ function ConversationCanvasInner({
           onAddFollowUp: async (nId: string, q: string) => {
             await createConversationNodeRef.current(q, nId);
           },
+          onBranchFromSelection: async (nId: string, text: string, q: string, start: number, end: number, fromQ: boolean) => {
+            await createBranchFromSelectionRef.current(nId, text, q, start, end, fromQ);
+          },
+          onNavigateToNode: (nId: string) => navigateToNodeRef.current(nId),
           onDelete: (nId: string) => handleDeleteNodeRef.current(nId),
           onMaximize: (nId: string) => enterFullscreenModeRef.current(nId),
         }
@@ -631,8 +646,28 @@ function ConversationCanvasInner({
         remainingNodeIds.has(e.source) && remainingNodeIds.has(e.target)
       );
       
-      // Remove nodes
-      const remainingNodes = currentNodes.filter(n => !nodesToDelete.has(n.id));
+      // Remove nodes and clean up exploredSelections from ALL nodes that reference deleted nodes
+      const remainingNodes = currentNodes
+        .filter(n => !nodesToDelete.has(n.id))
+        .map(node => {
+          // Clean up exploredSelections that reference any deleted node
+          if (node.data?.exploredSelections && (node.data.exploredSelections as any[]).length > 0) {
+            const cleanedSelections = (node.data.exploredSelections as any[]).filter(
+              (sel: any) => !nodesToDelete.has(sel.childNodeId)
+            );
+            // Only update if selections changed
+            if (cleanedSelections.length !== (node.data.exploredSelections as any[]).length) {
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  exploredSelections: cleanedSelections,
+                },
+              };
+            }
+          }
+          return node;
+        });
       
       // Recalculate layout for remaining nodes
       const { nodes: layoutedNodes } = getLayoutedElements(remainingNodes, cleanedEdges);
@@ -645,6 +680,10 @@ function ConversationCanvasInner({
           onAddFollowUp: async (nId: string, q: string) => {
             await createConversationNodeRef.current(q, nId);
           },
+          onBranchFromSelection: async (nId: string, text: string, q: string, start: number, end: number, fromQ: boolean) => {
+            await createBranchFromSelectionRef.current(nId, text, q, start, end, fromQ);
+          },
+          onNavigateToNode: (nId: string) => navigateToNodeRef.current(nId),
           onDelete: (nId: string) => handleDeleteNodeRef.current(nId),
           onMaximize: (nId: string) => enterFullscreenModeRef.current(nId),
         }
@@ -674,12 +713,236 @@ function ConversationCanvasInner({
     }
   }, [setNodes, setEdges]);
 
+  // Navigate to a specific node (used when clicking on explored selection highlights)
+  const navigateToNode = useCallback((nodeId: string) => {
+    const node = nodesRef.current.find(n => n.id === nodeId);
+    if (!node || !reactFlowInstance) return;
+    
+    // Center on the node with animation
+    const nodeWidth = 450;
+    const nodeHeight = 468;
+    const centerX = node.position.x + nodeWidth / 2;
+    const centerY = node.position.y + nodeHeight / 2;
+    
+    reactFlowInstance.setCenter(centerX, centerY, {
+      duration: 500,
+      zoom: Math.max(reactFlowInstance.getZoom(), 0.8),
+    });
+  }, [reactFlowInstance]);
+
+  // Create a branch from a text selection
+  const createBranchFromSelection = useCallback(async (
+    parentNodeId: string,
+    selectedText: string,
+    question: string,
+    startOffset: number,
+    endOffset: number,
+    isFromQuestion: boolean
+  ) => {
+    console.log('🌿 Creating branch from selection:', { parentNodeId, selectedText, question });
+    
+    // Create the child node using the existing createConversationNode
+    const timestamp = new Date().toLocaleString();
+    const nodeId = `conversation-${nodeIdCounter.current++}`;
+    
+    // Get conversation history from parent
+    const conversationHistory = getConversationHistory(parentNodeId, nodesRef.current, edgesRef.current);
+    
+    // Add context about the selection to the question
+    const contextualQuestion = `Regarding "${selectedText}": ${question}`;
+    conversationHistory.push({ role: 'user', content: contextualQuestion });
+    
+    // Create node with streaming
+    const conversationNode: Node<ConversationNodeData> = {
+      id: nodeId,
+      type: 'conversation',
+      position: { x: 0, y: 0 },
+      data: {
+        question: contextualQuestion,
+        response: '',
+        timestamp,
+        isStreaming: true,
+        exploredSelections: [],
+        onAddFollowUp: async (nId: string, q: string) => {
+          await createConversationNodeRef.current(q, nId);
+        },
+        onBranchFromSelection: async (nId: string, text: string, q: string, start: number, end: number, fromQ: boolean) => {
+          await createBranchFromSelectionRef.current(nId, text, q, start, end, fromQ);
+        },
+        onNavigateToNode: (nId: string) => navigateToNodeRef.current(nId),
+        onDelete: (nId: string) => handleDeleteNodeRef.current(nId),
+        onMaximize: (nId: string) => enterFullscreenModeRef.current(nId),
+      },
+    };
+    
+    const newEdge = { id: `${parentNodeId}-${nodeId}`, source: parentNodeId, target: nodeId };
+    const updatedEdges = [...edgesRef.current, newEdge];
+    
+    // Update parent node with the explored selection
+    const exploredSelection = {
+      text: selectedText,
+      startOffset,
+      endOffset,
+      childNodeId: nodeId,
+      isFromQuestion,
+    };
+    
+    // Capture parent position for viewport compensation
+    const parentNodeBefore = nodesRef.current.find(n => n.id === parentNodeId);
+    const parentPosBefore = parentNodeBefore ? { ...parentNodeBefore.position } : null;
+    const viewportBefore = reactFlowInstance ? {
+      ...reactFlowInstance.getViewport(),
+      zoom: reactFlowInstance.getZoom()
+    } : null;
+    
+    setEdges(updatedEdges);
+    
+    setNodes((currentNodes) => {
+      // Update parent with new explored selection
+      const updatedNodes = currentNodes.map(node => {
+        if (node.id === parentNodeId) {
+          const existingSelections = (node.data as ConversationNodeData).exploredSelections || [];
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              exploredSelections: [...existingSelections, exploredSelection],
+            },
+          };
+        }
+        return node;
+      });
+      
+      const newNodes = [...updatedNodes, conversationNode];
+      const { nodes: layoutedNodes } = getLayoutedElements(newNodes, updatedEdges);
+      
+      const nodesWithCallback = layoutedNodes.map(node => ({
+        ...node,
+        data: {
+          ...node.data,
+          onAddFollowUp: async (nId: string, q: string) => {
+            await createConversationNodeRef.current(q, nId);
+          },
+          onBranchFromSelection: async (nId: string, text: string, q: string, start: number, end: number, fromQ: boolean) => {
+            await createBranchFromSelectionRef.current(nId, text, q, start, end, fromQ);
+          },
+          onNavigateToNode: (nId: string) => navigateToNodeRef.current(nId),
+          onDelete: (nId: string) => handleDeleteNodeRef.current(nId),
+          onMaximize: (nId: string) => enterFullscreenModeRef.current(nId),
+        }
+      }));
+      
+      // Compensate for layout shift
+      if (reactFlowInstance && viewportBefore && parentPosBefore) {
+        const parentNodeAfter = nodesWithCallback.find(n => n.id === parentNodeId);
+        const newNode = nodesWithCallback.find(n => n.id === nodeId);
+        
+        if (parentNodeAfter && newNode) {
+          const shiftX = parentNodeAfter.position.x - parentPosBefore.x;
+          const shiftY = parentNodeAfter.position.y - parentPosBefore.y;
+          
+          reactFlowInstance.setViewport({
+            x: viewportBefore.x - shiftX * viewportBefore.zoom,
+            y: viewportBefore.y - shiftY * viewportBefore.zoom,
+            zoom: viewportBefore.zoom
+          }, { duration: 0 });
+          
+          requestAnimationFrame(() => {
+            const nodeWidth = 450;
+            const nodeHeight = 468;
+            const centerX = newNode.position.x + nodeWidth / 2;
+            const centerY = newNode.position.y + nodeHeight / 2;
+            
+            reactFlowInstance.setCenter(centerX, centerY, { 
+              duration: 400,
+              zoom: viewportBefore.zoom
+            });
+          });
+        }
+      }
+      
+      return nodesWithCallback;
+    });
+    
+    // Stream the response
+    let fullResponse = '';
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
+      
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: conversationHistory, stream: true }),
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        let errorMessage = `Request failed (${response.status})`;
+        try {
+          const errorText = await response.text();
+          if (errorText.startsWith('{')) {
+            const errorJson = JSON.parse(errorText);
+            if (errorJson.error) errorMessage = errorJson.error;
+          }
+        } catch { /* ignore */ }
+        throw new Error(errorMessage);
+      }
+      
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('No response body');
+      
+      const decoder = new TextDecoder();
+      let buffer = '';
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data === '[DONE]') continue;
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.content) {
+                fullResponse += parsed.content;
+                updateNodeData(nodeId, { response: fullResponse });
+              }
+            } catch { /* skip */ }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Streaming error:', error);
+      if (error instanceof Error && error.name === 'AbortError') {
+        fullResponse = fullResponse || 'Request timed out. Please try again.';
+      } else if (!fullResponse) {
+        fullResponse = `Sorry, an error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      }
+    }
+    
+    updateNodeData(nodeId, { response: fullResponse, isStreaming: false });
+  }, [getConversationHistory, setNodes, setEdges, reactFlowInstance, updateNodeData]);
+
+  // Refs for new callbacks
+  const createBranchFromSelectionRef = useRef(createBranchFromSelection);
+  const navigateToNodeRef = useRef(navigateToNode);
+
   // Keep callback refs updated to avoid stale closures
   useEffect(() => {
     handleDeleteNodeRef.current = handleDeleteNode;
     enterFullscreenModeRef.current = enterFullscreenMode;
     createConversationNodeRef.current = createConversationNode;
-  }, [handleDeleteNode, enterFullscreenMode, createConversationNode]);
+    createBranchFromSelectionRef.current = createBranchFromSelection;
+    navigateToNodeRef.current = navigateToNode;
+  }, [handleDeleteNode, enterFullscreenMode, createConversationNode, createBranchFromSelection, navigateToNode]);
   
   // Undo delete
   const handleUndoDelete = useCallback(() => {
@@ -743,9 +1006,14 @@ function ConversationCanvasInner({
           response: aiResponse,
           timestamp,
           isStreaming: false, // Explicitly set to false since response is already complete
+          exploredSelections: [],
           onAddFollowUp: async (nId: string, q: string) => {
             await createConversationNodeRef.current(q, nId);
           },
+          onBranchFromSelection: async (nId: string, text: string, q: string, start: number, end: number, fromQ: boolean) => {
+            await createBranchFromSelectionRef.current(nId, text, q, start, end, fromQ);
+          },
+          onNavigateToNode: (nId: string) => navigateToNodeRef.current(nId),
           onDelete: (nId: string) => handleDeleteNodeRef.current(nId),
           onMaximize: (nId: string) => enterFullscreenModeRef.current(nId),
           positioned: false,
@@ -770,6 +1038,10 @@ function ConversationCanvasInner({
           onAddFollowUp: async (nId: string, q: string) => {
             await createConversationNodeRef.current(q, nId);
           },
+          onBranchFromSelection: async (nId: string, text: string, q: string, start: number, end: number, fromQ: boolean) => {
+            await createBranchFromSelectionRef.current(nId, text, q, start, end, fromQ);
+          },
+          onNavigateToNode: (nId: string) => navigateToNodeRef.current(nId),
           onDelete: (nId: string) => handleDeleteNodeRef.current(nId),
           onMaximize: (nId: string) => enterFullscreenModeRef.current(nId),
         }
@@ -968,6 +1240,10 @@ function ConversationCanvasInner({
           onAddFollowUp: async (nodeId: string, q: string) => {
             await createConversationNodeRef.current(q, nodeId);
           },
+          onBranchFromSelection: async (nodeId: string, text: string, q: string, start: number, end: number, fromQ: boolean) => {
+            await createBranchFromSelectionRef.current(nodeId, text, q, start, end, fromQ);
+          },
+          onNavigateToNode: (nodeId: string) => navigateToNodeRef.current(nodeId),
           onDelete: (nodeId: string) => handleDeleteNodeRef.current(nodeId),
           onMaximize: (nodeId: string) => enterFullscreenModeRef.current(nodeId),
         },
@@ -1147,8 +1423,9 @@ function ConversationCanvasInner({
           panOnScroll={false}
           panOnDrag={true}
           nodesDraggable={false}
-          elementsSelectable={true}
+          elementsSelectable={false}
           selectNodesOnDrag={false}
+          selectionOnDrag={false}
           zoomActivationKeyCode={null}
           preventScrolling={true}
           proOptions={{ hideAttribution: true }}

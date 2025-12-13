@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { memo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -13,7 +13,8 @@ interface MarkdownContentProps {
   className?: string;
 }
 
-export default function MarkdownContent({ content, className = '' }: MarkdownContentProps) {
+// Memoized to prevent re-renders that would clear browser text selection
+const MarkdownContent = memo(function MarkdownContent({ content, className = '' }: MarkdownContentProps) {
   return (
     <div className={`markdown-content ${className}`}>
       <ReactMarkdown
@@ -61,4 +62,6 @@ export default function MarkdownContent({ content, className = '' }: MarkdownCon
       </ReactMarkdown>
     </div>
   );
-}
+});
+
+export default MarkdownContent;
