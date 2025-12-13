@@ -190,6 +190,7 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
             </div>
             {data.exploredSelections?.length > 0 && (
               <HighlightOverlay
+                key={`question-highlights-${data.exploredSelections.length}-${data.exploredSelections.map((s: ExploredSelection) => s.childNodeId).join('-')}`}
                 containerRef={questionRef}
                 selections={data.exploredSelections}
                 onHighlightClick={handleHighlightClick}
@@ -217,6 +218,7 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
             
             {data.exploredSelections?.length > 0 && response && (
               <HighlightOverlay
+                key={`response-highlights-${data.exploredSelections.length}-${data.exploredSelections.map((s: ExploredSelection) => s.childNodeId).join('-')}`}
                 containerRef={responseRef}
                 selections={data.exploredSelections}
                 onHighlightClick={handleHighlightClick}
