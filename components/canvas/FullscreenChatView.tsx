@@ -358,7 +358,6 @@ export default function FullscreenChatView({
         isLoading={isLoading}
         autoFocus={true}
         disabled={isTransitioning}
-        isTransitioning={isTransitioning}
         placeholder="Add a follow-up... "
       />
     </div>
