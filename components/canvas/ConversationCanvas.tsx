@@ -752,21 +752,23 @@ function ConversationCanvasInner({
     // Get conversation history from parent
     const conversationHistory = getConversationHistory(parentNodeId, nodesRef.current, edgesRef.current);
     
-    // Add context about the selection to the question
-    const contextualQuestion = `Regarding "${selectedText}": ${question}`;
-    conversationHistory.push({ role: 'user', content: contextualQuestion });
+    // Add context about the selection to the AI prompt (but not displayed in node)
+    const contextForAI = `Regarding "${selectedText}": ${question}`;
+    conversationHistory.push({ role: 'user', content: contextForAI });
     
-    // Create node with streaming
+    // Create node with streaming - display only the user's question (cleaner UI)
+    // Store the selected text as context for display
     const conversationNode: Node<ConversationNodeData> = {
       id: nodeId,
       type: 'conversation',
       position: { x: 0, y: 0 },
       data: {
-        question: contextualQuestion,
+        question: question,
         response: '',
         timestamp,
         isStreaming: true,
         exploredSelections: [],
+        selectionContext: selectedText,
         onAddFollowUp: async (nId: string, q: string) => {
           await createConversationNodeRef.current(q, nId);
         },

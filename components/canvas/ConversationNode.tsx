@@ -17,6 +17,8 @@ export interface ConversationNodeData extends Record<string, unknown> {
   timestamp: string;
   isStreaming?: boolean;
   exploredSelections?: ExploredSelection[];
+  /** The text that was selected to create this branch (shown as context) */
+  selectionContext?: string;
   onAddFollowUp: (nodeId: string, question: string) => Promise<void>;
   onBranchFromSelection?: (nodeId: string, selectedText: string, question: string, startOffset: number, endOffset: number, isFromQuestion: boolean) => Promise<void>;
   onNavigateToNode?: (nodeId: string) => void;
@@ -193,6 +195,12 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
         >
           {/* Question */}
           <div className="nodrag nopan select-text cursor-text" ref={questionRef}>
+            {/* Selection context - shown if this node was created from a text selection */}
+            {data.selectionContext && (
+              <div className="text-sm text-text-tertiary italic mb-2">
+                &ldquo;{data.selectionContext}&rdquo;
+              </div>
+            )}
             <div className="text-lg font-semibold text-user-question whitespace-pre-wrap break-words leading-snug">
               {data.exploredSelections?.filter((s: ExploredSelection) => s.isFromQuestion).length > 0 ? (
                 <HighlightedText
@@ -267,8 +275,19 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
                 &ldquo;{truncatedSelection || ''}&rdquo;
               </span>
               <button 
+                onClick={async () => {
+                  if (activeSelection?.text) {
+                    await navigator.clipboard.writeText(activeSelection.text);
+                  }
+                }}
+                className="p-0.5 rounded hover:bg-elevated text-text-tertiary hover:text-text-secondary nodrag nopan"
+                title="Copy selected text"
+              >
+                <Copy className="w-3 h-3" />
+              </button>
+              <button 
                 onClick={clearAllSelections}
-                className="ml-auto p-0.5 rounded hover:bg-elevated text-text-tertiary hover:text-text-secondary nodrag nopan"
+                className="p-0.5 rounded hover:bg-elevated text-text-tertiary hover:text-text-secondary nodrag nopan"
               >
                 <X className="w-3 h-3" />
               </button>
