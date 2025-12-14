@@ -300,11 +300,13 @@ function ConversationCanvasInner({
         nodeIds: nodes.map(n => n.id),
         edgeIds: edges.map(e => e.id),
         nodeCount: nodes.length,
-        // Include response data and streaming state to trigger saves
+        // Include response data, streaming state, and exploredSelections to trigger saves
         nodeData: nodes.map(n => ({
           id: n.id,
           response: n.data?.response || '',
           isStreaming: n.data?.isStreaming || false,
+          exploredSelectionsCount: (n.data?.exploredSelections as any[] | undefined)?.length || 0,
+          exploredSelectionIds: ((n.data?.exploredSelections as any[] | undefined) || []).map((s: any) => s.childNodeId).join(','),
         })),
       });
       
@@ -466,50 +468,52 @@ function ConversationCanvasInner({
         }
       }));
       
-      // Compensate for layout shift and pan to new node
+      // Schedule viewport compensation after render (outside setNodes callback)
       if (reactFlowInstance && viewportBefore) {
         const parentNodeAfter = parentId ? nodesWithCallback.find(n => n.id === parentId) : null;
         const newNode = nodesWithCallback.find(n => n.id === nodeId);
         
         if (parentId && parentPosBefore && parentNodeAfter && newNode) {
-          // Calculate how much the parent shifted
           const shiftX = parentNodeAfter.position.x - parentPosBefore.x;
           const shiftY = parentNodeAfter.position.y - parentPosBefore.y;
+          const newNodePos = { x: newNode.position.x, y: newNode.position.y };
           
-          // Immediately adjust viewport to compensate for the shift (no animation)
-          // This keeps the view stable while layout changes
-          reactFlowInstance.setViewport({
-            x: viewportBefore.x - shiftX * viewportBefore.zoom,
-            y: viewportBefore.y - shiftY * viewportBefore.zoom,
-            zoom: viewportBefore.zoom
-          }, { duration: 0 });
-          
-          // Then smoothly pan to the new node
-          requestAnimationFrame(() => {
-            const nodeWidth = 450;
-            const nodeHeight = 468;
-            const centerX = newNode.position.x + nodeWidth / 2;
-            const centerY = newNode.position.y + nodeHeight / 2;
-            
-            reactFlowInstance.setCenter(centerX, centerY, { 
-              duration: 400,
+          setTimeout(() => {
+            reactFlowInstance.setViewport({
+              x: viewportBefore.x - shiftX * viewportBefore.zoom,
+              y: viewportBefore.y - shiftY * viewportBefore.zoom,
               zoom: viewportBefore.zoom
-            });
-          });
-        } else if (newNode) {
-          // First node - just center on it
-          requestAnimationFrame(() => {
-            const nodeWidth = 450;
-            const nodeHeight = 468;
-            const centerX = newNode.position.x + nodeWidth / 2;
-            const centerY = newNode.position.y + nodeHeight / 2;
+            }, { duration: 0 });
             
-            const targetZoom = Math.max(viewportBefore.zoom, 0.8);
-            reactFlowInstance.setCenter(centerX, centerY, { 
-              duration: 400,
-              zoom: targetZoom
+            requestAnimationFrame(() => {
+              const nodeWidth = 450;
+              const nodeHeight = 468;
+              const centerX = newNodePos.x + nodeWidth / 2;
+              const centerY = newNodePos.y + nodeHeight / 2;
+              
+              reactFlowInstance.setCenter(centerX, centerY, { 
+                duration: 400,
+                zoom: viewportBefore.zoom
+              });
             });
-          });
+          }, 0);
+        } else if (newNode) {
+          const newNodePos = { x: newNode.position.x, y: newNode.position.y };
+          
+          setTimeout(() => {
+            requestAnimationFrame(() => {
+              const nodeWidth = 450;
+              const nodeHeight = 468;
+              const centerX = newNodePos.x + nodeWidth / 2;
+              const centerY = newNodePos.y + nodeHeight / 2;
+              
+              const targetZoom = Math.max(viewportBefore.zoom, 0.8);
+              reactFlowInstance.setCenter(centerX, centerY, { 
+                duration: 400,
+                zoom: targetZoom
+              });
+            });
+          }, 0);
         }
       }
       
@@ -832,7 +836,7 @@ function ConversationCanvasInner({
         }
       }));
       
-      // Compensate for layout shift
+      // Schedule viewport compensation after render
       if (reactFlowInstance && viewportBefore && parentPosBefore) {
         const parentNodeAfter = nodesWithCallback.find(n => n.id === parentNodeId);
         const newNode = nodesWithCallback.find(n => n.id === nodeId);
@@ -840,24 +844,28 @@ function ConversationCanvasInner({
         if (parentNodeAfter && newNode) {
           const shiftX = parentNodeAfter.position.x - parentPosBefore.x;
           const shiftY = parentNodeAfter.position.y - parentPosBefore.y;
+          const newNodePos = { x: newNode.position.x, y: newNode.position.y };
           
-          reactFlowInstance.setViewport({
-            x: viewportBefore.x - shiftX * viewportBefore.zoom,
-            y: viewportBefore.y - shiftY * viewportBefore.zoom,
-            zoom: viewportBefore.zoom
-          }, { duration: 0 });
-          
-          requestAnimationFrame(() => {
-            const nodeWidth = 450;
-            const nodeHeight = 468;
-            const centerX = newNode.position.x + nodeWidth / 2;
-            const centerY = newNode.position.y + nodeHeight / 2;
-            
-            reactFlowInstance.setCenter(centerX, centerY, { 
-              duration: 400,
+          // Use setTimeout to move this outside the render cycle
+          setTimeout(() => {
+            reactFlowInstance.setViewport({
+              x: viewportBefore.x - shiftX * viewportBefore.zoom,
+              y: viewportBefore.y - shiftY * viewportBefore.zoom,
               zoom: viewportBefore.zoom
+            }, { duration: 0 });
+            
+            requestAnimationFrame(() => {
+              const nodeWidth = 450;
+              const nodeHeight = 468;
+              const centerX = newNodePos.x + nodeWidth / 2;
+              const centerY = newNodePos.y + nodeHeight / 2;
+              
+              reactFlowInstance.setCenter(centerX, centerY, { 
+                duration: 400,
+                zoom: viewportBefore.zoom
+              });
             });
-          });
+          }, 0);
         }
       }
       

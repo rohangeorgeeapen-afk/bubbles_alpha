@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ArrowUp, Maximize2, X, Copy, Check, GitBranch } from 'lucide-react';
 import MarkdownContent from '@/components/shared/MarkdownContent';
-import { useTextSelection, HighlightOverlay, DisambiguationMenu } from './selection';
+import { useTextSelection, DisambiguationMenu } from './selection';
+import HighlightedText from './selection/HighlightedText';
 import type { ExploredSelection } from './types';
 
 export interface ConversationNodeData extends Record<string, unknown> {
@@ -87,12 +88,19 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
   }, [followUpText, isSubmitting, data, id]);
 
   // Handle highlight click (for explored selections)
-  const handleHighlightClick = useCallback((selections: ExploredSelection[], rect: DOMRect) => {
+  const handleHighlightClick = useCallback((selections: ExploredSelection[]) => {
     if (selections.length === 1) {
       data.onNavigateToNode?.(selections[0].childNodeId);
     } else {
+      // For disambiguation, create a dummy rect at center of screen
+      const rect = new DOMRect(window.innerWidth / 2, window.innerHeight / 2, 0, 0);
       setDisambiguationState({ selections, rect });
     }
+  }, [data]);
+
+  // Handle single highlight click by childNodeId
+  const handleResponseHighlightClick = useCallback((childNodeId: string) => {
+    data.onNavigateToNode?.(childNodeId);
   }, [data]);
 
   const handleSelectBranch = useCallback((childNodeId: string) => {
@@ -184,27 +192,35 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
           onMouseUp={(e) => e.stopPropagation()}
         >
           {/* Question */}
-          <div className="nodrag nopan select-text cursor-text relative" ref={questionRef}>
+          <div className="nodrag nopan select-text cursor-text" ref={questionRef}>
             <div className="text-lg font-semibold text-user-question whitespace-pre-wrap break-words leading-snug">
-              {question}
+              {data.exploredSelections?.filter((s: ExploredSelection) => s.isFromQuestion).length > 0 ? (
+                <HighlightedText
+                  text={question}
+                  selections={data.exploredSelections.filter((s: ExploredSelection) => s.isFromQuestion)}
+                  onHighlightClick={handleHighlightClick}
+                />
+              ) : (
+                question
+              )}
             </div>
-            {data.exploredSelections?.length > 0 && (
-              <HighlightOverlay
-                key={`question-highlights-${data.exploredSelections.length}-${data.exploredSelections.map((s: ExploredSelection) => s.childNodeId).join('-')}`}
-                containerRef={questionRef}
-                selections={data.exploredSelections}
-                onHighlightClick={handleHighlightClick}
-                isQuestion={true}
-              />
-            )}
           </div>
 
           <div className="border-t border-border-subtle" />
 
           {/* Response */}
-          <div className="nodrag nopan select-text cursor-text relative" ref={responseRef}>
+          <div className="nodrag nopan select-text cursor-text" ref={responseRef}>
             {response ? (
-              <MarkdownContent content={response} className="text-[15px] text-ai-response leading-relaxed" />
+              <MarkdownContent 
+                content={response} 
+                className="text-[15px] text-ai-response leading-relaxed"
+                highlights={data.exploredSelections?.filter((s: ExploredSelection) => !s.isFromQuestion).map((s: ExploredSelection) => ({
+                  text: s.text,
+                  startOffset: s.startOffset,
+                  id: s.childNodeId,
+                }))}
+                onHighlightClick={handleResponseHighlightClick}
+              />
             ) : data.isStreaming ? (
               <div className="flex items-center gap-3 py-2">
                 <div className="flex items-center gap-1">
@@ -215,16 +231,6 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
                 <span className="text-sm text-text-secondary" style={{ animation: 'thinking-fade 2s ease-in-out infinite' }}>Thinking</span>
               </div>
             ) : null}
-            
-            {data.exploredSelections?.length > 0 && response && (
-              <HighlightOverlay
-                key={`response-highlights-${data.exploredSelections.length}-${data.exploredSelections.map((s: ExploredSelection) => s.childNodeId).join('-')}`}
-                containerRef={responseRef}
-                selections={data.exploredSelections}
-                onHighlightClick={handleHighlightClick}
-                isQuestion={false}
-              />
-            )}
             
             {data.isStreaming && response && (
               <span className="inline-block w-0.5 h-4 bg-action-primary animate-pulse ml-0.5 align-middle" />

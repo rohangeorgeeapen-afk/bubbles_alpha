@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type { ExploredSelection } from '../types';
 
 interface HighlightRect {
@@ -25,68 +25,18 @@ export default function HighlightOverlay({
   isQuestion = false,
 }: HighlightOverlayProps) {
   const [highlightRects, setHighlightRects] = useState<HighlightRect[]>([]);
+  const [isVisible, setIsVisible] = useState(false);
   const mouseDownPosRef = useRef<{ x: number; y: number } | null>(null);
-  const recalcCountRef = useRef(0);
-
-  // Find text in container and return a Range
-  const findTextRange = useCallback((container: HTMLElement, searchText: string): Range | null => {
-    if (!searchText || typeof document === 'undefined') return null;
-
-    const fullText = container.textContent || '';
-    const searchIndex = fullText.indexOf(searchText);
-    
-    if (searchIndex === -1) return null;
-
-    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null);
-    let currentOffset = 0;
-    let startNode: Node | null = null;
-    let startOffset = 0;
-    let endNode: Node | null = null;
-    let endOffset = 0;
-    
-    const searchEnd = searchIndex + searchText.length;
-    let node = walker.nextNode();
-
-    while (node) {
-      const nodeLength = node.textContent?.length || 0;
-      const nodeEnd = currentOffset + nodeLength;
-
-      if (!startNode && searchIndex >= currentOffset && searchIndex < nodeEnd) {
-        startNode = node;
-        startOffset = searchIndex - currentOffset;
-      }
-
-      if (searchEnd > currentOffset && searchEnd <= nodeEnd) {
-        endNode = node;
-        endOffset = searchEnd - currentOffset;
-        break;
-      }
-
-      currentOffset = nodeEnd;
-      node = walker.nextNode();
-    }
-
-    if (!startNode || !endNode) return null;
-
-    try {
-      const range = document.createRange();
-      range.setStart(startNode, startOffset);
-      range.setEnd(endNode, endOffset);
-      return range;
-    } catch {
-      return null;
-    }
-  }, []);
+  const overlayRef = useRef<HTMLDivElement>(null);
 
   // Calculate highlight positions
   const calculateRects = useCallback(() => {
-    if (typeof document === 'undefined' || !containerRef.current || selections.length === 0) {
+    const container = containerRef.current;
+    const overlay = overlayRef.current;
+    if (!container || !overlay || selections.length === 0) {
       setHighlightRects([]);
       return;
     }
-
-    const container = containerRef.current;
-    const newRects: HighlightRect[] = [];
 
     // Filter selections for this container type
     const relevantSelections = selections.filter(s => 
@@ -98,99 +48,146 @@ export default function HighlightOverlay({
       return;
     }
 
-    // Get container rect FRESH each time
-    const containerRect = container.getBoundingClientRect();
+    const newRects: HighlightRect[] = [];
+    const fullText = container.textContent || '';
+
+    // Get overlay's position to calculate relative coordinates
+    const overlayRect = overlay.getBoundingClientRect();
 
     for (const selection of relevantSelections) {
-      const range = findTextRange(container, selection.text);
-      if (!range) continue;
+      const searchText = selection.text;
+      if (!searchText) continue;
+
+      // Find the best matching occurrence
+      let bestIndex = -1;
+      let searchPos = 0;
+      
+      while (true) {
+        const idx = fullText.indexOf(searchText, searchPos);
+        if (idx === -1) break;
+        
+        if (bestIndex === -1 || 
+            Math.abs(idx - selection.startOffset) < Math.abs(bestIndex - selection.startOffset)) {
+          bestIndex = idx;
+        }
+        searchPos = idx + 1;
+      }
+
+      if (bestIndex === -1) continue;
+
+      // Find the text nodes for this range
+      const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null);
+      let currentOffset = 0;
+      let startNode: Node | null = null;
+      let startOffset = 0;
+      let endNode: Node | null = null;
+      let endOffset = 0;
+      const searchEnd = bestIndex + searchText.length;
+
+      let node = walker.nextNode();
+      while (node) {
+        const nodeLength = node.textContent?.length || 0;
+        const nodeEnd = currentOffset + nodeLength;
+
+        if (!startNode && bestIndex >= currentOffset && bestIndex < nodeEnd) {
+          startNode = node;
+          startOffset = bestIndex - currentOffset;
+        }
+
+        if (searchEnd > currentOffset && searchEnd <= nodeEnd) {
+          endNode = node;
+          endOffset = searchEnd - currentOffset;
+          break;
+        }
+
+        currentOffset = nodeEnd;
+        node = walker.nextNode();
+      }
+
+      if (!startNode || !endNode) continue;
 
       try {
+        const range = document.createRange();
+        range.setStart(startNode, startOffset);
+        range.setEnd(endNode, endOffset);
+
+        // Get client rects and convert to overlay-relative coordinates
         const clientRects = Array.from(range.getClientRects());
-        
+
+        console.log('🎯 Highlight calc:', {
+          text: searchText.substring(0, 20),
+          overlayRect: { top: overlayRect.top, left: overlayRect.left },
+          firstClientRect: clientRects[0] ? { top: clientRects[0].top, left: clientRects[0].left } : null,
+        });
+
         for (const rect of clientRects) {
-          if (rect.width === 0 || rect.height === 0) continue;
-          
-          // Calculate position relative to container
+          if (rect.width < 1 || rect.height < 1) continue;
+
+          // Position relative to the overlay element
           const relativeRect: HighlightRect = {
-            top: rect.top - containerRect.top + container.scrollTop,
-            left: rect.left - containerRect.left + container.scrollLeft,
+            top: rect.top - overlayRect.top,
+            left: rect.left - overlayRect.left,
             width: rect.width,
             height: rect.height,
             selections: [selection],
           };
+          
+          console.log('📍 Relative rect:', relativeRect);
 
           // Merge overlapping rects
-          const overlappingIndex = newRects.findIndex(existing => rectsOverlap(existing, relativeRect));
+          const overlappingIndex = newRects.findIndex(existing => {
+            const tolerance = 2;
+            return !(
+              existing.left + existing.width + tolerance < relativeRect.left ||
+              relativeRect.left + relativeRect.width + tolerance < existing.left ||
+              existing.top + existing.height + tolerance < relativeRect.top ||
+              relativeRect.top + relativeRect.height + tolerance < existing.top
+            );
+          });
 
           if (overlappingIndex >= 0) {
             const existing = newRects[overlappingIndex];
             if (!existing.selections.some(s => s.childNodeId === selection.childNodeId)) {
               existing.selections.push(selection);
             }
-            const minLeft = Math.min(existing.left, relativeRect.left);
-            const minTop = Math.min(existing.top, relativeRect.top);
-            const maxRight = Math.max(existing.left + existing.width, relativeRect.left + relativeRect.width);
-            const maxBottom = Math.max(existing.top + existing.height, relativeRect.top + relativeRect.height);
-            existing.left = minLeft;
-            existing.top = minTop;
-            existing.width = maxRight - minLeft;
-            existing.height = maxBottom - minTop;
           } else {
             newRects.push(relativeRect);
           }
         }
-      } catch (e) {
-        console.warn('Failed to get rects:', e);
+      } catch {
+        // Ignore range errors
       }
     }
 
     setHighlightRects(newRects);
-  }, [containerRef, selections, isQuestion, findTextRange]);
+  }, [containerRef, selections, isQuestion]);
 
-  // Use useLayoutEffect to calculate BEFORE paint
-  useLayoutEffect(() => {
-    if (typeof window === 'undefined') return;
-    calculateRects();
+  // Wait for canvas to settle, then calculate and fade in
+  useEffect(() => {
+    setIsVisible(false);
+    setHighlightRects([]);
+
+    // Wait for canvas animations to complete
+    const settleTimeout = setTimeout(() => {
+      calculateRects();
+      setTimeout(() => setIsVisible(true), 50);
+    }, 800);
+
+    return () => clearTimeout(settleTimeout);
   }, [calculateRects]);
 
-  // Also recalculate after delays to handle layout shifts from canvas animations
+  // Recalculate on window resize
   useEffect(() => {
-    if (typeof window === 'undefined' || selections.length === 0) return;
-    
-    // Multiple recalculations to catch layout animations
-    const timeouts = [
-      setTimeout(calculateRects, 50),
-      setTimeout(calculateRects, 200),
-      setTimeout(calculateRects, 500),
-    ];
-    
-    return () => timeouts.forEach(clearTimeout);
-  }, [selections, calculateRects]);
-
-  // Recalculate on resize
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const resizeObserver = new ResizeObserver(() => {
-      calculateRects();
-    });
-
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current);
-    }
-
-    return () => resizeObserver.disconnect();
-  }, [calculateRects, containerRef]);
-
-  // Recalculate on scroll
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    container.addEventListener('scroll', calculateRects);
-    return () => container.removeEventListener('scroll', calculateRects);
-  }, [containerRef, calculateRects]);
+    const handleResize = () => {
+      setIsVisible(false);
+      setTimeout(() => {
+        calculateRects();
+        setIsVisible(true);
+      }, 100);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [calculateRects]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     mouseDownPosRef.current = { x: e.clientX, y: e.clientY };
@@ -201,42 +198,32 @@ export default function HighlightOverlay({
     mouseDownPosRef.current = null;
     if (!downPos) return;
 
-    const dx = Math.abs(e.clientX - downPos.x);
-    const dy = Math.abs(e.clientY - downPos.y);
-    if (dx < 5 && dy < 5) {
+    if (Math.abs(e.clientX - downPos.x) < 5 && Math.abs(e.clientY - downPos.y) < 5) {
       onHighlightClick(sels, new DOMRect(e.clientX - 10, e.clientY - 10, 20, 20));
     }
   }, [onHighlightClick]);
 
-  if (highlightRects.length === 0) return null;
-
+  // Always render the overlay div so we can get its position
   return (
-    <div className="absolute inset-0 overflow-hidden" style={{ pointerEvents: 'none' }} aria-hidden="true">
+    <div 
+      ref={overlayRef}
+      className={`absolute inset-0 pointer-events-none transition-opacity duration-300 ${isVisible && highlightRects.length > 0 ? 'opacity-100' : 'opacity-0'}`}
+      aria-hidden="true"
+    >
       {highlightRects.map((rect, index) => (
         <div
           key={`${rect.selections[0]?.childNodeId}-${index}`}
-          className="absolute bg-purple-500/25 rounded-sm cursor-pointer hover:bg-purple-500/35 transition-colors"
+          className="absolute bg-purple-500/25 rounded-sm cursor-pointer hover:bg-purple-500/35 transition-colors pointer-events-auto"
           style={{
             top: rect.top,
             left: rect.left,
             width: rect.width,
             height: rect.height,
-            pointerEvents: 'auto',
           }}
           onMouseDown={handleMouseDown}
           onMouseUp={(e) => handleMouseUp(e, rect.selections)}
         />
       ))}
     </div>
-  );
-}
-
-function rectsOverlap(a: HighlightRect, b: HighlightRect): boolean {
-  const tolerance = 2;
-  return !(
-    a.left + a.width + tolerance < b.left ||
-    b.left + b.width + tolerance < a.left ||
-    a.top + a.height + tolerance < b.top ||
-    b.top + b.height + tolerance < a.top
   );
 }
