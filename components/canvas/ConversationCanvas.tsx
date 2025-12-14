@@ -469,11 +469,12 @@ function ConversationCanvasInner({
       }));
       
       // Schedule viewport compensation after render (outside setNodes callback)
-      if (reactFlowInstance && viewportBefore) {
-        const parentNodeAfter = parentId ? nodesWithCallback.find(n => n.id === parentId) : null;
-        const newNode = nodesWithCallback.find(n => n.id === nodeId);
+      const newNode = nodesWithCallback.find(n => n.id === nodeId);
+      
+      if (reactFlowInstance && viewportBefore && parentId && parentPosBefore) {
+        const parentNodeAfter = nodesWithCallback.find(n => n.id === parentId);
         
-        if (parentId && parentPosBefore && parentNodeAfter && newNode) {
+        if (parentNodeAfter && newNode) {
           const shiftX = parentNodeAfter.position.x - parentPosBefore.x;
           const shiftY = parentNodeAfter.position.y - parentPosBefore.y;
           const newNodePos = { x: newNode.position.x, y: newNode.position.y };
@@ -497,24 +498,26 @@ function ConversationCanvasInner({
               });
             });
           }, 0);
-        } else if (newNode) {
-          const newNodePos = { x: newNode.position.x, y: newNode.position.y };
-          
-          setTimeout(() => {
-            requestAnimationFrame(() => {
-              const nodeWidth = 450;
-              const nodeHeight = 468;
-              const centerX = newNodePos.x + nodeWidth / 2;
-              const centerY = newNodePos.y + nodeHeight / 2;
-              
-              const targetZoom = Math.max(viewportBefore.zoom, 0.8);
-              reactFlowInstance.setCenter(centerX, centerY, { 
-                duration: 400,
-                zoom: targetZoom
-              });
-            });
-          }, 0);
         }
+      } else if (newNode) {
+        // First node or reactFlowInstance not ready yet - use fitView with delay
+        const newNodePos = { x: newNode.position.x, y: newNode.position.y };
+        
+        setTimeout(() => {
+          if (reactFlowInstance) {
+            const nodeWidth = 450;
+            const nodeHeight = 468;
+            const centerX = newNodePos.x + nodeWidth / 2;
+            const centerY = newNodePos.y + nodeHeight / 2;
+            
+            const currentZoom = reactFlowInstance.getZoom();
+            const targetZoom = Math.max(currentZoom || 0.8, 0.8);
+            reactFlowInstance.setCenter(centerX, centerY, { 
+              duration: 400,
+              zoom: targetZoom
+            });
+          }
+        }, 100);
       }
       
       return nodesWithCallback;
