@@ -296,7 +296,7 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
           )}
           
           {/* Input row */}
-          <div className="p-2.5 select-none">
+          <div className="p-4 select-none">
             {/* Textarea wrapper - flex container for vertical centering */}
             <div className="flex items-center gap-2 bg-surface border border-border-default rounded-md focus-within:border-border-focus transition-colors pl-3 pr-1.5 py-1.5">
               {/* Textarea */}
