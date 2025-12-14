@@ -459,10 +459,10 @@ button, a, input, textarea, select {
   animation: slide-up 0.15s ease-out forwards;
 }
 
-/* Input focus glow */
-input:focus, textarea:focus {
+/* Input focus glow - disabled for custom inputs */
+/* input:focus, textarea:focus {
   @apply ring-1 ring-border-focus/30;
-}
+} */
 
 
 /* KaTeX math styling */

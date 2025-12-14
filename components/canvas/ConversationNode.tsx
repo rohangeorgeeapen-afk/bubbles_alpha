@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+
 import { ArrowUp, Maximize2, X, Copy, Check, GitBranch } from 'lucide-react';
 import MarkdownContent from '@/components/shared/MarkdownContent';
 import { useTextSelection, DisambiguationMenu } from './selection';
@@ -35,6 +35,7 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
   const [isHovered, setIsHovered] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const [isSelectionCopied, setIsSelectionCopied] = useState(false);
   const [isMac, setIsMac] = useState(false);
 
   // Refs for text containers
@@ -261,85 +262,91 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
 
         {/* Footer */}
         <div className="border-t border-border-subtle bg-void select-none">
-          {/* Selected text preview - always rendered, visibility controlled by CSS to avoid re-render clearing browser selection */}
-          <div 
-            className={`px-4 pt-2 pb-1 transition-all duration-150 ${
-              activeSelection && data.onBranchFromSelection 
-                ? 'opacity-100 max-h-10' 
-                : 'opacity-0 max-h-0 overflow-hidden py-0'
-            }`}
-          >
-            <div className="flex items-center gap-2 text-xs">
-              <GitBranch className="w-3 h-3 text-action-primary flex-shrink-0" />
-              <span className="text-text-tertiary truncate" title={activeSelection?.text || ''}>
-                &ldquo;{truncatedSelection || ''}&rdquo;
-              </span>
-              <button 
-                onClick={async () => {
-                  if (activeSelection?.text) {
-                    await navigator.clipboard.writeText(activeSelection.text);
-                  }
-                }}
-                className="p-0.5 rounded hover:bg-elevated text-text-tertiary hover:text-text-secondary nodrag nopan"
-                title="Copy selected text"
-              >
-                <Copy className="w-3 h-3" />
-              </button>
-              <button 
-                onClick={clearAllSelections}
-                className="p-0.5 rounded hover:bg-elevated text-text-tertiary hover:text-text-secondary nodrag nopan"
-              >
-                <X className="w-3 h-3" />
-              </button>
+          {/* Selected text preview - only rendered when active */}
+          {activeSelection && data.onBranchFromSelection && (
+            <div className="px-4 pt-2 pb-1">
+              <div className="flex items-center gap-2 text-xs">
+                <GitBranch className="w-3 h-3 text-action-primary flex-shrink-0" />
+                <span className="text-text-tertiary truncate flex-1 min-w-0" title={activeSelection?.text || ''}>
+                  &ldquo;{truncatedSelection || ''}&rdquo;
+                </span>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <button 
+                    onClick={async () => {
+                      if (activeSelection?.text) {
+                        await navigator.clipboard.writeText(activeSelection.text);
+                        setIsSelectionCopied(true);
+                        setTimeout(() => setIsSelectionCopied(false), 2000);
+                      }
+                    }}
+                    className="p-0.5 rounded hover:bg-elevated text-text-tertiary hover:text-text-secondary nodrag nopan"
+                    title={isSelectionCopied ? "Copied!" : "Copy selected text"}
+                  >
+                    {isSelectionCopied ? <Check className="w-3 h-3 text-success" /> : <Copy className="w-3 h-3" />}
+                  </button>
+                  <button 
+                    onClick={clearAllSelections}
+                    className="p-0.5 rounded hover:bg-elevated text-text-tertiary hover:text-text-secondary nodrag nopan"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
           
           {/* Input row */}
-          <div className="px-4 py-3 select-none">
-            <div className="relative select-none flex items-center gap-2">
-              <div className="relative flex-1">
-                <Input
-                  type="text"
-                  placeholder={activeSelection ? "Ask about this selection..." : "Ask a follow-up..."}
-                  value={followUpText}
-                  onChange={(e) => setFollowUpText(e.target.value)}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onKeyDown={async (e) => {
-                    if (e.key === 'Enter' && followUpText.trim()) {
-                      if (activeSelection && data.onBranchFromSelection) {
-                        await handleBranchClick();
-                      } else {
-                        await handleSubmitFollowUp();
-                      }
+          <div className="p-2.5 select-none">
+            {/* Textarea wrapper - flex container for vertical centering */}
+            <div className="flex items-center gap-2 bg-surface border border-border-default rounded-md focus-within:border-border-focus transition-colors pl-3 pr-1.5 py-1.5">
+              {/* Textarea */}
+              <textarea
+                placeholder={activeSelection ? "Ask about this selection..." : "Ask a follow-up..."}
+                value={followUpText}
+                onChange={(e) => {
+                  setFollowUpText(e.target.value);
+                  e.target.style.height = 'auto';
+                  e.target.style.height = Math.min(e.target.scrollHeight, 96) + 'px';
+                }}
+                onMouseDown={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+                onKeyDown={async (e) => {
+                  if (e.key === 'Enter' && !e.shiftKey && followUpText.trim()) {
+                    e.preventDefault();
+                    if (activeSelection && data.onBranchFromSelection) {
+                      await handleBranchClick();
+                    } else {
+                      await handleSubmitFollowUp();
                     }
-                  }}
-                  disabled={isSubmitting}
-                  className="w-full h-8 bg-surface border border-border-default text-text-primary placeholder:text-text-disabled rounded-md px-3 pr-9 focus-visible:ring-0 focus-visible:border-border-focus transition-colors text-sm nodrag nopan"
-                />
-                {/* Submit/Branch button */}
-                <Button
-                  onClick={activeSelection && data.onBranchFromSelection ? handleBranchClick : handleSubmitFollowUp}
-                  disabled={!followUpText.trim() || isSubmitting}
-                  className={`absolute right-1 top-1/2 -translate-y-1/2 h-6 p-0 rounded-md transition-colors select-none disabled:opacity-30 disabled:cursor-not-allowed ${
-                    activeSelection && data.onBranchFromSelection
-                      ? 'w-auto px-2 bg-action-primary/10 hover:bg-action-primary/20 text-action-primary border border-action-primary/30 disabled:bg-transparent'
-                      : 'w-6 bg-action-primary hover:bg-action-primary-hover text-action-primary-text disabled:bg-elevated'
-                  }`}
-                  title={activeSelection ? "Branch from selection" : "Send"}
-                >
-                  {isSubmitting ? (
-                    <div className="w-3 h-3 border-2 border-border-strong border-t-action-primary rounded-full animate-spin" />
-                  ) : activeSelection && data.onBranchFromSelection ? (
-                    <div className="flex items-center gap-1">
-                      <GitBranch className="w-3 h-3" strokeWidth={2} />
-                      <span className="text-xs font-medium">Branch</span>
-                    </div>
-                  ) : (
-                    <ArrowUp className="w-3 h-3" strokeWidth={2.5} />
-                  )}
-                </Button>
-              </div>
+                  }
+                }}
+                disabled={isSubmitting}
+                rows={1}
+                className="flex-1 bg-transparent border-none text-text-primary placeholder:text-text-disabled focus:outline-none text-sm nodrag nopan resize-none overflow-y-auto"
+                style={{ height: '24px', lineHeight: '24px', maxHeight: '96px' }}
+              />
+              {/* Submit/Branch button */}
+              <Button
+                onClick={activeSelection && data.onBranchFromSelection ? handleBranchClick : handleSubmitFollowUp}
+                disabled={!followUpText.trim() || isSubmitting}
+                className={`shrink-0 h-6 p-0 rounded-md transition-colors select-none disabled:opacity-30 disabled:cursor-not-allowed ${
+                  activeSelection && data.onBranchFromSelection
+                    ? 'w-auto px-2 bg-action-primary/10 hover:bg-action-primary/20 text-action-primary border border-action-primary/30 disabled:bg-transparent'
+                    : 'w-6 bg-action-primary hover:bg-action-primary-hover text-action-primary-text disabled:bg-elevated'
+                }`}
+                title={activeSelection ? "Branch from selection (Enter)" : "Send (Enter)"}
+              >
+                {isSubmitting ? (
+                  <div className="w-3 h-3 border-2 border-border-strong border-t-action-primary rounded-full animate-spin" />
+                ) : activeSelection && data.onBranchFromSelection ? (
+                  <div className="flex items-center gap-1">
+                    <GitBranch className="w-3 h-3" strokeWidth={2} />
+                    <span className="text-xs font-medium">Branch</span>
+                  </div>
+                ) : (
+                  <ArrowUp className="w-3 h-3" strokeWidth={2.5} />
+                )}
+              </Button>
             </div>
           </div>
         </div>

@@ -50,7 +50,7 @@ const MessagePair = memo(function MessagePair({ question, answer, isError, isLoa
 
       {/* AI Response - uses ai-response color (slightly muted) */}
       <div 
-        className={`relative ${isError ? 'text-error' : ''}`}
+        className={isError ? 'text-error' : ''}
         onMouseEnter={() => setIsResponseHovered(true)}
         onMouseLeave={() => setIsResponseHovered(false)}
       >
@@ -75,21 +75,24 @@ const MessagePair = memo(function MessagePair({ question, answer, isError, isLoa
             </span>
           </div>
         ) : (
-          <MarkdownContent content={answer} className="text-base leading-relaxed text-ai-response" />
-        )}
-        
-        {/* Copy button - ghost action */}
-        {answer && (
-          <button
-            onClick={handleCopyResponse}
-            className={`absolute top-0 right-0 p-2 rounded-md bg-void border border-border-subtle transition-all duration-200 ${
-              isResponseHovered ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1 pointer-events-none'
-            } hover:bg-elevated hover:border-border-default`}
-            aria-label={isCopied ? 'Copied!' : 'Copy response'}
-            title={isCopied ? 'Copied!' : 'Copy'}
-          >
-            {isCopied ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4 text-text-tertiary" />}
-          </button>
+          <>
+            <MarkdownContent content={answer} className="text-base leading-relaxed text-ai-response" />
+            {/* Copy button - at end of response */}
+            {answer && (
+              <div className="flex justify-end mt-3">
+                <button
+                  onClick={handleCopyResponse}
+                  className={`p-1.5 rounded-md bg-void border border-border-subtle transition-all duration-200 ${
+                    isResponseHovered ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                  } hover:bg-elevated hover:border-border-default`}
+                  aria-label={isCopied ? 'Copied!' : 'Copy response'}
+                  title={isCopied ? 'Copied!' : 'Copy'}
+                >
+                  {isCopied ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4 text-text-tertiary" />}
+                </button>
+              </div>
+            )}
+          </>
         )}
         
       </div>

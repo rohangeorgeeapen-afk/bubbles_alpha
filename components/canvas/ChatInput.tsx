@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useRef, useEffect, useState } from 'react';
-import { Textarea } from '@/components/ui/textarea';
 import { ArrowUp } from 'lucide-react';
 
 interface ChatInputProps {
@@ -12,7 +11,6 @@ interface ChatInputProps {
   autoFocus?: boolean;
   preservedMessage?: string;
   disabled?: boolean;
-  isTransitioning?: boolean;
 }
 
 export default function ChatInput({
@@ -23,81 +21,35 @@ export default function ChatInput({
   autoFocus = true,
   preservedMessage = '',
   disabled = false,
-  isTransitioning = false,
 }: ChatInputProps) {
   const [inputValue, setInputValue] = useState(preservedMessage);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
-  
-  // Detect motion preferences
-  useEffect(() => {
-    // Check for reduced motion preference
-    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-    setPrefersReducedMotion(mediaQuery.matches);
-    
-    const handleMotionChange = (e: MediaQueryListEvent) => {
-      setPrefersReducedMotion(e.matches);
-    };
-    
-    mediaQuery.addEventListener('change', handleMotionChange);
-    
-    return () => {
-      mediaQuery.removeEventListener('change', handleMotionChange);
-    };
-  }, []);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Update input value when preservedMessage changes
   useEffect(() => {
-    if (preservedMessage) {
-      setInputValue(preservedMessage);
-    }
+    if (preservedMessage) setInputValue(preservedMessage);
   }, [preservedMessage]);
 
-  // Auto-focus input on mount
   useEffect(() => {
-    if (autoFocus && inputRef.current) {
-      inputRef.current.focus();
-    }
+    if (autoFocus && textareaRef.current) textareaRef.current.focus();
   }, [autoFocus]);
 
-  // Reset to minimum height when transitioning ends
   useEffect(() => {
-    if (!isTransitioning && inputRef.current) {
-      const minHeight = 42;
-      inputRef.current.style.height = `${minHeight}px`;
-    }
-  }, [isTransitioning]);
-
-  // Auto-resize textarea based on content
-  useEffect(() => {
-    if (inputRef.current && !isTransitioning) {
-      const minHeight = 42;
-      const maxHeight = 150;
-      
-      // Reset to auto to get the natural scroll height
-      inputRef.current.style.height = 'auto';
-      
-      // Set height based on content, but never below minimum
-      const scrollHeight = inputRef.current.scrollHeight;
-      const newHeight = Math.max(minHeight, Math.min(scrollHeight, maxHeight));
-      
-      inputRef.current.style.height = `${newHeight}px`;
-    }
-  }, [inputValue, isTransitioning]);
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    textarea.style.height = '24px';
+    const newHeight = Math.min(Math.max(textarea.scrollHeight, 24), 120);
+    textarea.style.height = `${newHeight}px`;
+  }, [inputValue]);
 
   const handleSubmit = async () => {
     const message = inputValue.trim();
     if (!message || isSubmitting || isLoading) return;
-
     setIsSubmitting(true);
     setInputValue('');
-    
     try {
       await onSendMessage(message);
-    } catch (error) {
-      console.error('Error sending message:', error);
-      // Restore the message on error
+    } catch {
       setInputValue(message);
     } finally {
       setIsSubmitting(false);
@@ -105,52 +57,51 @@ export default function ChatInput({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Enter to send message (without Shift)
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSubmit();
     }
-    // Escape to exit fullscreen
-    if (e.key === 'Escape' && onEscape) {
-      onEscape();
-    }
+    if (e.key === 'Escape' && onEscape) onEscape();
   };
 
   const isDisabled = isSubmitting || isLoading || disabled;
   const canSend = inputValue.trim() && !isDisabled;
 
+  // Button: 32px, Text box padding: 6px top + 6px bottom = 44px total
+  // Footer padding: 12px top + 12px bottom = 68px total with 44px text box
+
   return (
-    <div className="border-t border-border-subtle bg-void px-6 py-3 flex-shrink-0 relative shadow-depth-lg">
-      <div className="max-w-4xl mx-auto relative">
-        <label htmlFor="chat-input" className="sr-only">Type your message</label>
-        <Textarea
-          id="chat-input"
-          ref={inputRef}
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={placeholder}
-          disabled={isDisabled}
-          aria-label="Chat message input"
-          aria-describedby="chat-input-help"
-          className="w-full max-h-[150px] text-[15px] bg-surface border border-border-default text-text-primary placeholder:text-text-disabled rounded-md px-4 py-2.5 pr-12 resize-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-border-focus leading-normal overflow-y-auto transition-colors"
-          style={{ fontSize: '15px', minHeight: '48px', height: '48px', scrollbarWidth: 'none' }}
-          rows={1}
-        />
-        <span id="chat-input-help" className="sr-only">Press Enter to send, Shift+Enter for new line, Escape to close</span>
-        <button
-          onClick={handleSubmit}
-          disabled={!canSend}
-          aria-label={isSubmitting || isLoading ? 'Sending message' : 'Send message'}
-          className="absolute right-2 top-1/2 -translate-y-1/2 h-9 w-9 btn-primary p-0 flex items-center justify-center disabled:opacity-30 disabled:bg-elevated disabled:cursor-not-allowed disabled:active:scale-100"
-          title="Send message (Enter)"
+    <div className="bg-void border-t border-border-subtle py-3 px-4">
+      <div className="max-w-4xl mx-auto">
+        <div 
+          className="bg-surface border border-border-default rounded-lg focus-within:border-border-focus"
+          style={{ padding: '5px 8px 5px 14px' }}
         >
-          {isSubmitting || isLoading ? (
-            <div className="w-4 h-4 border-2 border-border-strong border-t-action-primary rounded-full animate-spin" role="status" aria-label="Loading" />
-          ) : (
-            <ArrowUp className="w-4 h-4" strokeWidth={2.5} />
-          )}
-        </button>
+          <div className="flex items-center gap-2">
+            <textarea
+              ref={textareaRef}
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={placeholder}
+              disabled={isDisabled}
+              rows={1}
+              className="flex-1 bg-transparent text-[15px] text-text-primary placeholder:text-text-disabled resize-none focus:outline-none align-middle"
+              style={{ height: '30px', lineHeight: '30px', scrollbarWidth: 'none', padding: 0 }}
+            />
+            <button
+              onClick={handleSubmit}
+              disabled={!canSend}
+              className="shrink-0 w-[30px] h-[30px] rounded-md bg-action-primary text-white flex items-center justify-center disabled:opacity-30 disabled:bg-elevated hover:bg-action-primary/90"
+            >
+              {isSubmitting || isLoading ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <ArrowUp className="w-4 h-4" strokeWidth={2.5} />
+              )}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
