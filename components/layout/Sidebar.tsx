@@ -165,8 +165,8 @@ export default function Sidebar({
           ) : (
             <div className="flex gap-2">
               {/* Primary action button */}
-              <button onClick={handleNewCanvasClick} className="btn-primary flex-1 h-10 text-sm flex items-center justify-center gap-2 touch-manipulation">
-                <Plus className="w-4 h-4" strokeWidth={2.5} />
+              <button onClick={handleNewCanvasClick} className="btn-primary flex-1 h-10 text-sm relative flex items-center justify-center touch-manipulation">
+                <Plus className="w-4 h-4 absolute left-3" strokeWidth={2.5} />
                 <span>New canvas</span>
               </button>
               {/* Secondary action - subtle styling */}

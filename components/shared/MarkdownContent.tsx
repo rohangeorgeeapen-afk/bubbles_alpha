@@ -39,24 +39,51 @@ const MarkdownContent = memo(function MarkdownContent({
 
     let result = content;
     
-    // Sort highlights by startOffset descending so we can insert from end to start
-    // This prevents offset shifts from affecting subsequent insertions
-    const sortedHighlights = [...highlights].sort((a, b) => {
-      // Find actual positions in content
-      const posA = result.indexOf(a.text);
-      const posB = result.indexOf(b.text);
-      return posB - posA;
-    });
-
-    for (const highlight of sortedHighlights) {
-      // Find the text - use indexOf for simplicity
-      const idx = result.indexOf(highlight.text);
-      if (idx !== -1) {
-        // Wrap with mark element (supported by rehype-raw)
-        const before = result.slice(0, idx);
-        const after = result.slice(idx + highlight.text.length);
-        result = `${before}<mark class="explored-highlight" data-id="${highlight.id}">${highlight.text}</mark>${after}`;
+    // Helper to find text in markdown, accounting for formatting characters
+    const findTextInMarkdown = (markdown: string, searchText: string): { start: number; end: number } | null => {
+      // First try exact match
+      const exactIdx = markdown.indexOf(searchText);
+      if (exactIdx !== -1) {
+        return { start: exactIdx, end: exactIdx + searchText.length };
       }
+      
+      // Build a regex pattern that allows markdown formatting between words
+      // This handles cases like "word *formatted* word" matching "word formatted word"
+      const words = searchText.split(/\s+/);
+      if (words.length === 0) return null;
+      
+      // Create pattern: each word can be surrounded by markdown formatting
+      const markdownChars = '[*_~`]*';
+      const pattern = words
+        .map(word => markdownChars + word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + markdownChars)
+        .join('\\s*');
+      
+      const regex = new RegExp(pattern, 'i');
+      const match = markdown.match(regex);
+      
+      if (match && match.index !== undefined) {
+        return { start: match.index, end: match.index + match[0].length };
+      }
+      
+      return null;
+    };
+    
+    // Sort highlights by position descending so we can insert from end to start
+    const highlightsWithPositions = highlights
+      .map(h => ({ ...h, pos: findTextInMarkdown(result, h.text) }))
+      .filter(h => h.pos !== null)
+      .sort((a, b) => (b.pos?.start || 0) - (a.pos?.start || 0));
+
+    for (const highlight of highlightsWithPositions) {
+      if (!highlight.pos) continue;
+      
+      const { start, end } = highlight.pos;
+      const matchedText = result.slice(start, end);
+      
+      // Wrap with mark element (supported by rehype-raw)
+      const before = result.slice(0, start);
+      const after = result.slice(end);
+      result = `${before}<mark class="explored-highlight" data-id="${highlight.id}">${matchedText}</mark>${after}`;
     }
 
     return result;

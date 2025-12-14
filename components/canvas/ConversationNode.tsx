@@ -191,7 +191,7 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
         
         {/* Content area - stop mouseup propagation to prevent ReactFlow from clearing selection */}
         <div 
-          className={`p-5 space-y-4 scrollbar-thin nodrag nopan select-text cursor-text relative ${isLongContent ? 'flex-1 overflow-y-auto' : ''}`}
+          className={`p-5 space-y-4 scrollbar-thin scrollbar-auto-hide nodrag nopan select-text cursor-text relative ${isLongContent ? 'flex-1 overflow-y-auto' : ''}`}
           onMouseUp={(e) => e.stopPropagation()}
         >
           {/* Question */}

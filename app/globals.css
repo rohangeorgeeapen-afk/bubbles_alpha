@@ -181,6 +181,23 @@ code {
   scrollbar-color: hsl(var(--border-strong)) hsl(var(--base));
 }
 
+/* Scrollbar hidden by default, visible on hover */
+.scrollbar-auto-hide::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+
+.scrollbar-auto-hide:hover::-webkit-scrollbar-thumb {
+  background: hsl(var(--border-strong));
+}
+
+.scrollbar-auto-hide {
+  scrollbar-color: transparent hsl(var(--base));
+}
+
+.scrollbar-auto-hide:hover {
+  scrollbar-color: hsl(var(--border-strong)) hsl(var(--base));
+}
+
 /* Text selection */
 .react-flow__pane {
   cursor: default;

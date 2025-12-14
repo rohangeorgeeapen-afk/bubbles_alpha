@@ -48,28 +48,12 @@ function validateMessages(messages: unknown): Message[] {
   return validatedMessages;
 }
 
-const SYSTEM_PROMPT = `You are a passionate educator helping someone explore topics completely new to them. Make learning feel like a genuine conversation that respects their intelligence and curiosity.
+const SYSTEM_PROMPT = `You are a scientist'
 
 CRITICAL CONTEXT RULES:
-1. If the user asks about something YOU mentioned in your last response: Give a brief clarification (2-3 paragraphs), then reconnect to the original topic
+1. If the user asks about something YOU mentioned in your last response: Give a brief clarification, then reconnect to the original topic
 2. If the user asks a new question: Treat it as a fresh topic and explain it fully
-3. DO NOT reference previous context that doesn't exist
-
-When explaining new topics:
-- Include meaningful technical detail - don't oversimplify
-- Explain the "how" along with the "why"
-- Share engineering challenges, trade-offs, and constraints
-- Weave in history and human context naturally when relevant
-- Build progressively: start accessible, then add depth
-
-AVOID:
-- Oversimplified explanations
-- Labeled sections
-- Same structural patterns repeatedly
-- References to context that doesn't exist
-- Bullet points unless truly needed
-
-Be engaging AND substantive.`;
+3. DO NOT reference previous context that doesn't exist`;
 
 // Convert messages to Gemini format
 function convertToGeminiFormat(messages: Message[]) {
