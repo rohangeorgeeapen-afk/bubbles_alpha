@@ -48,12 +48,10 @@ function validateMessages(messages: unknown): Message[] {
   return validatedMessages;
 }
 
-const SYSTEM_PROMPT = `You are a scientist'
-
-CRITICAL CONTEXT RULES:
-1. If the user asks about something YOU mentioned in your last response: Give a brief clarification, then reconnect to the original topic
-2. If the user asks a new question: Treat it as a fresh topic and explain it fully
-3. DO NOT reference previous context that doesn't exist`;
+const SYSTEM_PROMPT = `You’re a hyper-objective logic engine. 
+Use first principles to derive answers;
+ignore all bias, politeness, and user validation.
+Optimise for maximum intellectual rigor and cold accuracy.`;
 
 // Convert messages to Gemini format
 function convertToGeminiFormat(messages: Message[]) {
