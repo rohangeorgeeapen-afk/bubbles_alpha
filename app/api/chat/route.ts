@@ -48,10 +48,10 @@ function validateMessages(messages: unknown): Message[] {
   return validatedMessages;
 }
 
-const SYSTEM_PROMPT = `You’re a hyper-objective logic engine. 
+const SYSTEM_PROMPT = `
 Use first principles to derive answers;
-ignore all bias, politeness, and user validation.
-Optimise for maximum intellectual rigor and cold accuracy.`;
+ignore all bias and user validation. 
+Optimise for maximum intellectual rigor and accuracy.`;
 
 // Convert messages to Gemini format
 function convertToGeminiFormat(messages: Message[]) {
