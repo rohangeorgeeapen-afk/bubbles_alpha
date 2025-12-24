@@ -41,10 +41,32 @@ const MarkdownContent = memo(function MarkdownContent({
     
     // Helper to find text in markdown, accounting for formatting characters
     const findTextInMarkdown = (markdown: string, searchText: string): { start: number; end: number } | null => {
+      console.log('🔎 findTextInMarkdown:', { searchText, markdownLength: markdown.length, markdownPreview: markdown.substring(0, 200) });
+      
       // First try exact match
       const exactIdx = markdown.indexOf(searchText);
+      console.log('🔎 Exact match result:', { exactIdx, searchText });
+      
       if (exactIdx !== -1) {
-        return { start: exactIdx, end: exactIdx + searchText.length };
+        // Expand to include surrounding markdown formatting (**, *, _, ~~, `)
+        let start = exactIdx;
+        let end = exactIdx + searchText.length;
+        
+        // Check for markdown formatting before the match and expand if matched
+        const formatChars = ['**', '~~', '*', '_', '`'];
+        for (const fmt of formatChars) {
+          if (start >= fmt.length && markdown.slice(start - fmt.length, start) === fmt) {
+            // Check if there's a matching closing format after
+            if (markdown.slice(end, end + fmt.length) === fmt) {
+              start -= fmt.length;
+              end += fmt.length;
+              console.log('🔎 Expanded for formatting:', { fmt, start, end });
+              break;
+            }
+          }
+        }
+        
+        return { start, end };
       }
       
       // Build a regex pattern that allows markdown formatting between words

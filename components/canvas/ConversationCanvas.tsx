@@ -66,7 +66,19 @@ function ConversationCanvasInner({
   const [followUpParentId, setFollowUpParentId] = useState<string | null>(null);
   const [followUpQuestion, setFollowUpQuestion] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const nodeIdCounter = useRef(initialNodes.length);
+  
+  // Initialize counter to max existing ID + 1 to prevent ID collisions after deletions/reloads
+  const nodeIdCounter = useRef(
+    initialNodes.length === 0 
+      ? 0 
+      : initialNodes.reduce((max, node) => {
+          const match = node.id.match(/^conversation-(\d+)$/);
+          if (match) {
+            return Math.max(max, parseInt(match[1], 10) + 1);
+          }
+          return max;
+        }, 0)
+  );
   const hasInitialized = useRef(false);
   
   // Welcome messages that rotate
@@ -653,50 +665,50 @@ function ConversationCanvasInner({
         remainingNodeIds.has(e.source) && remainingNodeIds.has(e.target)
       );
       
-      // Remove nodes and clean up exploredSelections from ALL nodes that reference deleted nodes
-      const remainingNodes = currentNodes
-        .filter(n => !nodesToDelete.has(n.id))
-        .map(node => {
-          // Clean up exploredSelections that reference any deleted node
-          if (node.data?.exploredSelections && (node.data.exploredSelections as any[]).length > 0) {
-            const cleanedSelections = (node.data.exploredSelections as any[]).filter(
-              (sel: any) => !nodesToDelete.has(sel.childNodeId)
-            );
-            // Only update if selections changed
-            if (cleanedSelections.length !== (node.data.exploredSelections as any[]).length) {
-              return {
-                ...node,
-                data: {
-                  ...node.data,
-                  exploredSelections: cleanedSelections,
-                },
-              };
+      // Update state using callback form to avoid race conditions
+      setNodes((currentNodesState) => {
+        // Re-calculate with the most current state
+        const nodesToDeleteSet = new Set([nodeId, ...findDescendants(nodeId, edgesRef.current)]);
+        
+        const remainingNodesFromState = currentNodesState
+          .filter(n => !nodesToDeleteSet.has(n.id))
+          .map(node => {
+            // Clean up exploredSelections that reference any deleted node
+            if (node.data?.exploredSelections && (node.data.exploredSelections as any[]).length > 0) {
+              const cleanedSelections = (node.data.exploredSelections as any[]).filter(
+                (sel: any) => !nodesToDeleteSet.has(sel.childNodeId)
+              );
+              if (cleanedSelections.length !== (node.data.exploredSelections as any[]).length) {
+                return {
+                  ...node,
+                  data: {
+                    ...node.data,
+                    exploredSelections: cleanedSelections,
+                  },
+                };
+              }
             }
+            return node;
+          });
+        
+        const { nodes: freshLayoutedNodes } = getLayoutedElements(remainingNodesFromState, cleanedEdges);
+        
+        return freshLayoutedNodes.map(node => ({
+          ...node,
+          data: {
+            ...node.data,
+            onAddFollowUp: async (nId: string, q: string) => {
+              await createConversationNodeRef.current(q, nId);
+            },
+            onBranchFromSelection: async (nId: string, text: string, q: string, start: number, end: number, fromQ: boolean) => {
+              await createBranchFromSelectionRef.current(nId, text, q, start, end, fromQ);
+            },
+            onNavigateToNode: (nId: string) => navigateToNodeRef.current(nId),
+            onDelete: (nId: string) => handleDeleteNodeRef.current(nId),
+            onMaximize: (nId: string) => enterFullscreenModeRef.current(nId),
           }
-          return node;
-        });
-      
-      // Recalculate layout for remaining nodes
-      const { nodes: layoutedNodes } = getLayoutedElements(remainingNodes, cleanedEdges);
-      
-      // Update nodes with callbacks
-      const nodesWithCallbacks = layoutedNodes.map(node => ({
-        ...node,
-        data: {
-          ...node.data,
-          onAddFollowUp: async (nId: string, q: string) => {
-            await createConversationNodeRef.current(q, nId);
-          },
-          onBranchFromSelection: async (nId: string, text: string, q: string, start: number, end: number, fromQ: boolean) => {
-            await createBranchFromSelectionRef.current(nId, text, q, start, end, fromQ);
-          },
-          onNavigateToNode: (nId: string) => navigateToNodeRef.current(nId),
-          onDelete: (nId: string) => handleDeleteNodeRef.current(nId),
-          onMaximize: (nId: string) => enterFullscreenModeRef.current(nId),
-        }
-      }));
-      
-      setNodes(nodesWithCallbacks);
+        }));
+      });
       setEdges(cleanedEdges);
       
       // Show undo toast
@@ -1037,34 +1049,45 @@ function ConversationCanvasInner({
       const newEdge = { id: `${parentId}-${nodeId}`, source: parentId, target: nodeId };
       
       // Build new arrays first (avoid nested setState)
-      const newNodes = [...currentNodes, conversationNode];
       const newEdges = [...currentEdges, newEdge];
       
-      // Run layout algorithm
-      const { nodes: layoutedNodes } = getLayoutedElements(newNodes, newEdges);
+      console.log('✅ Node created in background, preparing to update state');
       
-      // Update all nodes to have the callbacks
-      const nodesWithCallback = layoutedNodes.map(node => ({
-        ...node,
-        data: {
-          ...node.data,
-          onAddFollowUp: async (nId: string, q: string) => {
-            await createConversationNodeRef.current(q, nId);
-          },
-          onBranchFromSelection: async (nId: string, text: string, q: string, start: number, end: number, fromQ: boolean) => {
-            await createBranchFromSelectionRef.current(nId, text, q, start, end, fromQ);
-          },
-          onNavigateToNode: (nId: string) => navigateToNodeRef.current(nId),
-          onDelete: (nId: string) => handleDeleteNodeRef.current(nId),
-          onMaximize: (nId: string) => enterFullscreenModeRef.current(nId),
+      // Update state using callback form to avoid race conditions
+      setNodes((currentNodesInCallback) => {
+        // Re-run layout with the most current nodes to preserve any updates
+        // that happened while we were processing
+        const existingNodeIds = new Set(currentNodesInCallback.map(n => n.id));
+        
+        // If the node already exists (race condition), skip
+        if (existingNodeIds.has(nodeId)) {
+          console.warn('⚠️ Node already exists in state, skipping');
+          return currentNodesInCallback;
         }
-      }));
-      
-      console.log('✅ Node created in background, layout updated');
-      console.log('📍 New node position:', nodesWithCallback.find(n => n.id === nodeId)?.position);
-      
-      // Update state atomically (not nested)
-      setNodes(nodesWithCallback);
+        
+        // Merge: keep current nodes' data (preserves exploredSelections etc.)
+        // but use our new node
+        const mergedNodes = [...currentNodesInCallback, conversationNode];
+        const { nodes: freshLayoutedNodes } = getLayoutedElements(mergedNodes, newEdges);
+        
+        console.log('📍 New node position:', freshLayoutedNodes.find(n => n.id === nodeId)?.position);
+        
+        return freshLayoutedNodes.map(node => ({
+          ...node,
+          data: {
+            ...node.data,
+            onAddFollowUp: async (nId: string, q: string) => {
+              await createConversationNodeRef.current(q, nId);
+            },
+            onBranchFromSelection: async (nId: string, text: string, q: string, start: number, end: number, fromQ: boolean) => {
+              await createBranchFromSelectionRef.current(nId, text, q, start, end, fromQ);
+            },
+            onNavigateToNode: (nId: string) => navigateToNodeRef.current(nId),
+            onDelete: (nId: string) => handleDeleteNodeRef.current(nId),
+            onMaximize: (nId: string) => enterFullscreenModeRef.current(nId),
+          }
+        }));
+      });
       setEdges(newEdges);
       
       // Update active node ID to newly created node
@@ -1246,22 +1269,24 @@ function ConversationCanvasInner({
   useEffect(() => {
     if (!hasInitialized.current && nodes.length > 0) {
       hasInitialized.current = true;
-      const nodesWithCallback = nodes.map((node) => ({
-        ...node,
-        data: {
-          ...node.data,
-          onAddFollowUp: async (nodeId: string, q: string) => {
-            await createConversationNodeRef.current(q, nodeId);
+      // Use callback form to ensure we're working with the latest state
+      setNodes((currentNodes) => 
+        currentNodes.map((node) => ({
+          ...node,
+          data: {
+            ...node.data,
+            onAddFollowUp: async (nodeId: string, q: string) => {
+              await createConversationNodeRef.current(q, nodeId);
+            },
+            onBranchFromSelection: async (nodeId: string, text: string, q: string, start: number, end: number, fromQ: boolean) => {
+              await createBranchFromSelectionRef.current(nodeId, text, q, start, end, fromQ);
+            },
+            onNavigateToNode: (nodeId: string) => navigateToNodeRef.current(nodeId),
+            onDelete: (nodeId: string) => handleDeleteNodeRef.current(nodeId),
+            onMaximize: (nodeId: string) => enterFullscreenModeRef.current(nodeId),
           },
-          onBranchFromSelection: async (nodeId: string, text: string, q: string, start: number, end: number, fromQ: boolean) => {
-            await createBranchFromSelectionRef.current(nodeId, text, q, start, end, fromQ);
-          },
-          onNavigateToNode: (nodeId: string) => navigateToNodeRef.current(nodeId),
-          onDelete: (nodeId: string) => handleDeleteNodeRef.current(nodeId),
-          onMaximize: (nodeId: string) => enterFullscreenModeRef.current(nodeId),
-        },
-      }));
-      setNodes(nodesWithCallback);
+        }))
+      );
       
       // Initial fitView on mount when loading existing nodes
       if (reactFlowInstance) {
