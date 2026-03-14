@@ -12,6 +12,7 @@ export function useConversationHistory() {
 
   /**
    * Get conversation history by traversing from a node back to root
+   * Includes cycle detection to prevent infinite loops on corrupt data.
    */
   const getConversationHistory = useCallback((
     nodeId: string, 
@@ -20,8 +21,15 @@ export function useConversationHistory() {
   ): Message[] => {
     const history: Message[] = [];
     let currentNodeId: string | null = nodeId;
+    const visited = new Set<string>();
 
     while (currentNodeId) {
+      if (visited.has(currentNodeId)) {
+        console.warn('⚠️ Cycle detected in conversation history at node:', currentNodeId);
+        break;
+      }
+      visited.add(currentNodeId);
+
       const currentNode = currentNodes.find((n) => n.id === currentNodeId);
       if (!currentNode) break;
 
@@ -41,7 +49,8 @@ export function useConversationHistory() {
   }, []);
 
   /**
-   * Build conversation thread for fullscreen mode - with memoization
+   * Build conversation thread for fullscreen mode - with memoization.
+   * Includes cycle detection to prevent infinite loops on corrupt data.
    */
   const buildConversationThread = useCallback((
     activeNodeId: string,
@@ -60,9 +69,15 @@ export function useConversationHistory() {
     const thread: Message[] = [];
     let currentId: string | null = activeNodeId;
     
-    // Traverse backwards to root to build the path
+    // Traverse backwards to root to build the path, with cycle detection
     const path: string[] = [];
+    const visited = new Set<string>();
     while (currentId) {
+      if (visited.has(currentId)) {
+        console.warn('⚠️ Cycle detected in conversation thread at node:', currentId);
+        break;
+      }
+      visited.add(currentId);
       path.unshift(currentId);
       const parentEdge = currentEdges.find(e => e.target === currentId);
       currentId = parentEdge ? parentEdge.source : null;

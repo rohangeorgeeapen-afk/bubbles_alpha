@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
+import { checkRateLimit, getRateLimitIdentifier } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -92,6 +95,49 @@ function convertToGeminiFormat(messages: Message[]) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Authenticate the request
+    const cookieStore = cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) =>
+                cookieStore.set(name, value, options)
+              );
+            } catch {
+              // Ignore cookie setting errors in route handlers
+            }
+          },
+        },
+      }
+    );
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Rate limiting: 60 requests per hour per user
+    const rateLimitId = getRateLimitIdentifier(user.id);
+    const rateLimitResult = checkRateLimit(rateLimitId, 60);
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { error: 'Rate limit exceeded. Please wait and try again.' },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(rateLimitResult.retryAfter || 60),
+          },
+        }
+      );
+    }
+
     let body: unknown;
     try {
       body = await request.json();
@@ -131,10 +177,10 @@ export async function POST(request: NextRequest) {
     if (geminiApiKey) {
       const model = 'gemini-2.5-flash';
       const endpoint = stream 
-        ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${geminiApiKey}&alt=sse`
-        : `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`;
+        ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`
+        : `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
       
-      const requestBody: any = {
+      const requestBody: Record<string, unknown> = {
         contents,
         generationConfig: {
           temperature: 0.7,
@@ -148,7 +194,10 @@ export async function POST(request: NextRequest) {
 
       const response = await fetch(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': geminiApiKey,
+        },
         body: JSON.stringify(requestBody),
       });
 
