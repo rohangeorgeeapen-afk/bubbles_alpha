@@ -27,9 +27,6 @@ export interface ConversationNodeData extends Record<string, unknown> {
 }
 
 export default function ConversationNode({ id, data }: NodeProps<any>) {
-  // Debug: log exploredSelections
-  console.log(`🔍 ConversationNode ${id} exploredSelections:`, data.exploredSelections);
-  
   const question = data.question || '';
   const response = data.response || '';
   const totalLength = question.length + response.length;

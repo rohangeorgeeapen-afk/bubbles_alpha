@@ -39,7 +39,6 @@ function ConversationCanvasInner({
   onUpdate,
   sidebarOpen = true
 }: ConversationCanvasProps = {}) {
-  console.log('🎨 ConversationCanvas: Rendering with', { nodeCount: initialNodes.length, edgeCount: initialEdges.length });
   
   // Fix any stuck streaming nodes on mount (nodes that were saved mid-stream)
   const fixedInitialNodes = React.useMemo(() => {

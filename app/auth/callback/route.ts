@@ -5,7 +5,10 @@ import { NextResponse } from 'next/server';
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
-  const next = requestUrl.searchParams.get('next') || '/';
+  // Validate the 'next' parameter to prevent open redirect attacks.
+  // Only allow relative paths starting with a single slash.
+  const rawNext = requestUrl.searchParams.get('next') || '/';
+  const next = rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/';
 
   if (code) {
     const cookieStore = cookies();
