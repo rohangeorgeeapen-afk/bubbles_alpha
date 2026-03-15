@@ -24,6 +24,7 @@ import { ArrowUp, Undo2 } from 'lucide-react';
 import { getLayoutedElements } from '@/lib/utils/layout';
 import { ViewportManager } from '@/lib/utils/viewport-manager';
 import FullscreenChatView from './FullscreenChatView';
+import { NODE_WIDTH, NODE_HEIGHT } from '@/lib/layout/constants';
 
 const nodeTypes = {
   conversation: ConversationNode as any,
@@ -261,8 +262,8 @@ function ConversationCanvasInner({
     const transitionBounds = {
       x: screenX,
       y: screenY,
-      width: 450 * zoom,
-      height: 468 * zoom,
+      width: NODE_WIDTH * zoom,
+      height: NODE_HEIGHT * zoom,
     };
     
     console.log('📐 ENTER - Node position:', transitionBounds);
@@ -458,15 +459,15 @@ function ConversationCanvasInner({
       const parentBounds = {
         x: parentNode.position.x,
         y: parentNode.position.y,
-        width: 450,
-        height: 468,
+        width: NODE_WIDTH,
+        height: NODE_HEIGHT,
       };
 
       const childBounds = {
         x: childNode.position.x,
         y: childNode.position.y,
-        width: 450,
-        height: 468,
+        width: NODE_WIDTH,
+        height: NODE_HEIGHT,
       };
 
       // Try-catch around viewport API calls
@@ -1150,10 +1151,10 @@ function ConversationCanvasInner({
           
           const screenX = node.position.x * zoom + viewport.x;
           const screenY = node.position.y * zoom + viewport.y;
-          
-          const nodeWidth = 450;
-          const nodeHeight = 468;
-          
+
+          const nodeWidth = NODE_WIDTH;
+          const nodeHeight = NODE_HEIGHT;
+
           const transitionBounds = {
             x: screenX,
             y: screenY,

@@ -1,6 +1,6 @@
 /**
  * TreeBuilder - Converts flat node/edge arrays into hierarchical tree structure
- * 
+ *
  * This class takes React Flow nodes and edges and builds a tree data structure
  * suitable for layout algorithms. It handles:
  * - Building parent-child relationships from edges
@@ -9,6 +9,7 @@
  */
 
 import { Node, Edge, TreeNode, TreeStructure } from './types';
+import { NODE_WIDTH, NODE_HEIGHT } from './constants';
 
 export class TreeBuilder {
   // Cache for cycle detection to avoid redundant checks
@@ -35,8 +36,8 @@ export class TreeBuilder {
         data: node,
         x: 0,
         y: 0,
-        width: 450,  // Fixed width for conversation nodes
-        height: 468, // Fixed height for conversation nodes
+        width: NODE_WIDTH,  // Fixed width for conversation nodes
+        height: NODE_HEIGHT, // Fixed height for conversation nodes
         mod: 0,
         thread: null,
         ancestor: null as any, // Will be set to self during initialization
