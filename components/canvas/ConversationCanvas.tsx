@@ -27,6 +27,7 @@ import FullscreenChatView from './FullscreenChatView';
 import { NODE_WIDTH, NODE_HEIGHT } from '@/lib/layout/constants';
 import { useCanvasStore, Message } from '@/lib/stores/canvasStore';
 import { CanvasActionsProvider } from '@/lib/contexts/canvasActionsContext';
+import { useCanvasSearch } from '@/hooks/canvas/useCanvasSearch';
 
 const nodeTypes = {
   conversation: ConversationNode as any,
@@ -1189,18 +1190,8 @@ function ConversationCanvasInner({
     handleUserInteraction();
   }, [handleUserInteraction]);
 
-  const filteredNodes = searchTerm
-    ? nodes.filter((node) => {
-        if (node.type === 'conversation') {
-          const nodeData = node.data as unknown as ConversationNodeData;
-          return (
-            nodeData.question.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            nodeData.response.toLowerCase().includes(searchTerm.toLowerCase())
-          );
-        }
-        return false;
-      })
-    : nodes;
+  // Use search hook to filter nodes
+  const { filteredNodes } = useCanvasSearch(nodes, searchTerm);
 
   // Update body data attribute when fullscreen state changes (for hiding sidebar on mobile)
   useEffect(() => {
