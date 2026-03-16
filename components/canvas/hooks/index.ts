@@ -11,3 +11,5 @@ export { useCanvasPersistence } from './useCanvasPersistence';
 export type { UseCanvasPersistenceProps, UseCanvasPersistenceReturn } from './useCanvasPersistence';
 export { useNodeManager } from './useNodeManager';
 export type { UseNodeManagerProps, StreamingCallbacks, CreateNodeParams, CreateNodeInBackgroundParams } from './useNodeManager';
+export { useFullscreenMode } from './useFullscreenMode';
+export type { UseFullscreenModeProps, UseFullscreenModeReturn } from './useFullscreenMode';
