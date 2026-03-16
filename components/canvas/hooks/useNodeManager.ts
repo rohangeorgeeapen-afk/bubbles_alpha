@@ -109,9 +109,11 @@ export function useNodeManager({
    * 3. Runs layout calculation
    * 4. If onStream provided, calls it to get the response
    * 5. Updates node as streaming progresses
+   *
+   * @returns The ID of the newly created node
    */
   const createNode = useCallback(
-    async ({ question, parentId, onStream }: CreateNodeParams) => {
+    async ({ question, parentId, onStream }: CreateNodeParams): Promise<string> => {
       const timestamp = new Date().toLocaleString();
       const nodeId = `conversation-${nodeIdCounter.current++}`;
 
@@ -177,6 +179,8 @@ export function useNodeManager({
         // No streaming - mark as not streaming immediately
         updateNodeData(nodeId, { isStreaming: false });
       }
+
+      return nodeId;
     },
     [setNodes, setEdges, getConversationHistory, updateNodeData]
   );

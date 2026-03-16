@@ -16,7 +16,6 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import ConversationNode, { ConversationNodeData } from './ConversationNode';
-import { getLayoutedElements } from '@/lib/utils/layout';
 import FullscreenChatView from './FullscreenChatView';
 
 // Extracted components
@@ -25,21 +24,32 @@ import CanvasControls from './CanvasControls';
 import UndoToast from './UndoToast';
 import NetworkStatusIndicator from './NetworkStatusIndicator';
 import { FollowUpDialog, ExitConfirmationDialog } from './CanvasDialogs';
-import { useConversationHistory, useNetworkStatus, useSmartPanning } from './hooks';
-import type { Message, FullscreenState, ConversationCanvasProps } from './types';
+
+// Extracted hooks
+import {
+  useConversationHistory,
+  useNetworkStatus,
+  useSmartPanning,
+  useStreamingChat,
+  useNodeManager,
+  useFullscreenMode,
+  useCanvasPersistence,
+} from './hooks';
+
+import type { ConversationCanvasProps } from './types';
 
 const nodeTypes = {
   conversation: ConversationNode as any,
 };
 
 // Inner component that uses ReactFlow hooks
-function ConversationCanvasInner({ 
-  initialNodes = [], 
+function ConversationCanvasInner({
+  initialNodes = [],
   initialEdges = [],
   onUpdate,
   sidebarOpen = true
 }: ConversationCanvasProps = {}) {
-  
+
   // Fix any stuck streaming nodes on mount (nodes that were saved mid-stream)
   const fixedInitialNodes = React.useMemo(() => {
     return initialNodes.map(node => {
@@ -57,30 +67,20 @@ function ConversationCanvasInner({
       return node;
     });
   }, [initialNodes]);
-  
+
+  // ReactFlow state
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>(fixedInitialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialEdges);
+
+  // UI state
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddingFollowUp, setIsAddingFollowUp] = useState(false);
   const [followUpParentId, setFollowUpParentId] = useState<string | null>(null);
   const [followUpQuestion, setFollowUpQuestion] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  
-  // Initialize counter to max existing ID + 1 to prevent ID collisions after deletions/reloads
-  const nodeIdCounter = useRef(
-    initialNodes.length === 0 
-      ? 0 
-      : initialNodes.reduce((max, node) => {
-          const match = node.id.match(/^conversation-(\d+)$/);
-          if (match) {
-            return Math.max(max, parseInt(match[1], 10) + 1);
-          }
-          return max;
-        }, 0)
-  );
   const hasInitialized = useRef(false);
-  
-  // Welcome messages that rotate
+
+  // Welcome message
   const welcomeMessages = [
     "What's on your mind?",
     "Let's explore something new",
@@ -93,662 +93,95 @@ function ConversationCanvasInner({
     "What's your question?",
     "Let's get started",
   ];
-  
+
   const [welcomeMessage] = useState(() => {
     return welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];
   });
-  
-  // Fullscreen state management
-  const [fullscreenState, setFullscreenState] = useState<FullscreenState>({
-    isFullscreen: false,
-    activeNodeId: null,
-    conversationThread: [],
-    isTransitioning: false,
-  });
-  const [isFullscreenLoading, setIsFullscreenLoading] = useState(false);
-  const [animateToFullscreen, setAnimateToFullscreen] = useState(false);
-  const [animateFromFullscreen, setAnimateFromFullscreen] = useState(false);
-  const isOnline = useNetworkStatus();
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const [showExitConfirmation, setShowExitConfirmation] = useState(false);
-  
-  // Smart panning hook
-  const { handleSmartPanning, handleUserInteraction, reactFlowInstance } = useSmartPanning();
-  
-  // Undo delete functionality
-  const [showUndoToast, setShowUndoToast] = useState(false);
-  const [deletedState, setDeletedState] = useState<{ nodes: Node[]; edges: Edge[] } | null>(null);
-  const undoTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
-  // Use refs to always have access to latest nodes and edges
-  const nodesRef = useRef(nodes);
-  const edgesRef = useRef(edges);
-  
-  // Refs for callbacks to avoid stale closures
-  const handleDeleteNodeRef = useRef<(nodeId: string) => void>(() => {});
-  const enterFullscreenModeRef = useRef<(nodeId: string) => void>(() => {});
-  const createConversationNodeRef = useRef<(question: string, parentId: string | null) => Promise<void>>(async () => {});
-  
-  useEffect(() => {
-    nodesRef.current = nodes;
-    edgesRef.current = edges;
-  }, [nodes, edges]);
 
-  // Custom node change handler - nodes are no longer draggable
+  // Initialize hooks
+  const isOnline = useNetworkStatus();
+  const { getConversationHistory, buildConversationThread } = useConversationHistory();
+  const { handleSmartPanning, handleUserInteraction, reactFlowInstance } = useSmartPanning();
+  const { streamChatResponse, abortStream } = useStreamingChat();
+
+  // Node Manager hook
+  const {
+    createNode,
+    createNodeInBackground,
+    updateNodeData,
+    deleteNode,
+    undoDelete,
+    showUndoToast,
+    nodesRef,
+    edgesRef
+  } = useNodeManager({
+    initialNodes: fixedInitialNodes,
+    nodes,
+    edges,
+    setNodes,
+    setEdges,
+    reactFlowInstance,
+    getConversationHistory,
+  });
+
+  // Fullscreen Mode hook
+  const {
+    fullscreenState,
+    isFullscreenLoading,
+    animateToFullscreen,
+    animateFromFullscreen,
+    showExitConfirmation,
+    enterFullscreenMode,
+    exitFullscreenMode,
+    handleFullscreenMessage,
+    setShowExitConfirmation,
+  } = useFullscreenMode({
+    nodes,
+    edges,
+    reactFlowInstance,
+    buildConversationThread,
+    isOnline,
+    onCreateNodeInBackground: createNodeInBackground,
+  });
+
+  // Persistence hook
+  useCanvasPersistence({
+    nodes,
+    edges,
+    onUpdate
+  });
+
+  // Custom node change handler
   const handleNodesChange = useCallback((changes: any) => {
     onNodesChange(changes);
   }, [onNodesChange]);
 
-  // Use extracted conversation history hook
-  const { getConversationHistory, buildConversationThread } = useConversationHistory();
-
-  // Enter fullscreen mode with fade + scale animation
-  const enterFullscreenMode = useCallback((nodeId: string) => {
-    console.log('🔍 Entering fullscreen mode for node:', nodeId);
-    
-    // Build conversation thread from root to this node
-    const thread = buildConversationThread(nodeId, nodesRef.current, edgesRef.current);
-    
-    // Get node position for transform origin
-    const node = nodesRef.current.find(n => n.id === nodeId);
-    if (!node || !reactFlowInstance) {
-      console.warn('⚠️ Node or ReactFlow instance not found');
-      return;
-    }
-    
-    // Get the node's position in screen coordinates
-    const viewport = reactFlowInstance.getViewport();
-    const zoom = reactFlowInstance.getZoom();
-    
-    const screenX = node.position.x * zoom + viewport.x;
-    const screenY = node.position.y * zoom + viewport.y;
-    
-    const transitionBounds = {
-      x: screenX,
-      y: screenY,
-      width: 450 * zoom,
-      height: 468 * zoom,
-    };
-    
-    console.log('📐 ENTER - Node position:', transitionBounds);
-    
-    // Start with fullscreen view hidden (scale 0.95, opacity 0)
-    setFullscreenState({
-      isFullscreen: false,
-      activeNodeId: nodeId,
-      conversationThread: thread,
-      isTransitioning: true,
-      transitionBounds,
-    });
-    
-    setAnimateToFullscreen(false);
-    setAnimateFromFullscreen(false);
-    
-    // Trigger fade-in + scale animation
-    requestAnimationFrame(() => {
-      setAnimateToFullscreen(true);
-    });
-    
-    // Mark as fully expanded after animation
-    setTimeout(() => {
-      setFullscreenState(prev => ({
-        ...prev,
-        isFullscreen: true,
-        isTransitioning: false,
-      }));
-      setAnimateToFullscreen(false);
-    }, 400);
-  }, [buildConversationThread, reactFlowInstance]);
-
-  // Exit fullscreen mode with fade + scale animation
-  const exitFullscreenMode = useCallback((force: boolean = false) => {
-    try {
-      console.log('🔍 Exiting fullscreen mode');
-      
-      // Check if AI is generating response
-      if (!force && isFullscreenLoading) {
-        setShowExitConfirmation(true);
-        return;
-      }
-      
-      // Cancel any pending API request
-      if (abortControllerRef.current) {
-        try {
-          abortControllerRef.current.abort();
-        } catch (abortError) {
-          console.error('Error aborting request:', abortError);
-        }
-        abortControllerRef.current = null;
-        setIsFullscreenLoading(false);
-      }
-      
-      if (!fullscreenState.activeNodeId) {
-        console.warn('⚠️ Cannot exit fullscreen: missing activeNodeId');
-        setFullscreenState({
-          isFullscreen: false,
-          activeNodeId: null,
-          conversationThread: [],
-          isTransitioning: false,
-        });
-        return;
-      }
-      
-      // Mark as transitioning
-      setFullscreenState(prev => ({
-        ...prev,
-        isFullscreen: false,
-        isTransitioning: true,
-      }));
-      
-      setAnimateToFullscreen(false);
-      
-      // Trigger fade-out + scale animation
-      requestAnimationFrame(() => {
-        setAnimateFromFullscreen(true);
-      });
-      
-      // Clear state after animation and pan to node
-      setTimeout(() => {
-        const activeNodeId = fullscreenState.activeNodeId;
-        
-        setFullscreenState({
-          isFullscreen: false,
-          activeNodeId: null,
-          conversationThread: [],
-          isTransitioning: false,
-        });
-        setAnimateFromFullscreen(false);
-        
-        // Pan to the node
-        if (activeNodeId && reactFlowInstance) {
-          const activeNode = nodesRef.current.find(n => n.id === activeNodeId);
-          if (activeNode) {
-            try {
-              reactFlowInstance.fitView({
-                nodes: [activeNode],
-                duration: 500,
-                padding: 0.3,
-              });
-            } catch (fitViewError) {
-              console.error('Error panning to node:', fitViewError);
-            }
-          }
-        }
-      }, 400);
-    } catch (error) {
-      console.error('[Exit Fullscreen Error]', error);
-      setFullscreenState({
-        isFullscreen: false,
-        activeNodeId: null,
-        conversationThread: [],
-        isTransitioning: false,
-      });
-      setAnimateFromFullscreen(false);
-      setAnimateToFullscreen(false);
-      setIsFullscreenLoading(false);
-      if (abortControllerRef.current) {
-        try {
-          abortControllerRef.current.abort();
-        } catch (abortError) {
-          // Ignore abort errors during cleanup
-        }
-        abortControllerRef.current = null;
-      }
-    }
-  }, [fullscreenState.activeNodeId, reactFlowInstance, isFullscreenLoading]);
-
-  // Smart panning is now handled by useSmartPanning hook
-
-  // Notify parent of changes - strip out functions before saving
-  // Use a ref to track the last saved state to avoid infinite loops
-  const lastSavedState = useRef<string>('');
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
-  useEffect(() => {
-    if (onUpdate) {
-      // Create a hash of the current state including node data
-      const currentState = JSON.stringify({ 
-        nodeIds: nodes.map(n => n.id),
-        edgeIds: edges.map(e => e.id),
-        nodeCount: nodes.length,
-        // Include response data, streaming state, and exploredSelections to trigger saves
-        nodeData: nodes.map(n => ({
-          id: n.id,
-          response: n.data?.response || '',
-          isStreaming: n.data?.isStreaming || false,
-          exploredSelectionsCount: (n.data?.exploredSelections as any[] | undefined)?.length || 0,
-          exploredSelectionIds: ((n.data?.exploredSelections as any[] | undefined) || []).map((s: any) => s.childNodeId).join(','),
-        })),
-      });
-      
-      // Only update if state actually changed
-      if (currentState !== lastSavedState.current) {
-        lastSavedState.current = currentState;
-        
-        // Remove non-serializable data (functions) before saving
-        const serializableNodes = nodes.map(node => ({
-          ...node,
-          data: {
-            ...node.data,
-            onAddFollowUp: undefined,
-            onBranchFromSelection: undefined,
-            onNavigateToNode: undefined,
-            onDelete: undefined,
-            onMaximize: undefined,
-          }
-        }));
-        
-        // Check if any node is currently streaming
-        const isAnyStreaming = nodes.some(n => n.data?.isStreaming);
-        
-        // Clear any pending save
-        if (saveTimeoutRef.current) {
-          clearTimeout(saveTimeoutRef.current);
-        }
-        
-        if (isAnyStreaming) {
-          // During streaming, debounce saves to every 2 seconds
-          saveTimeoutRef.current = setTimeout(() => {
-            onUpdate(serializableNodes, edges);
-          }, 2000);
-        } else {
-          // Not streaming - save immediately
-          onUpdate(serializableNodes, edges);
-        }
-      }
-    }
-    
-  }, [nodes, edges, onUpdate]);
-  
-  // Save pending changes on unmount (e.g., when switching canvases)
-  useEffect(() => {
-    return () => {
-      // Clear any pending debounced save
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-      
-      // Save current state immediately on unmount
-      if (onUpdate && nodesRef.current.length > 0) {
-        const serializableNodes = nodesRef.current.map(node => ({
-          ...node,
-          data: {
-            ...node.data,
-            onAddFollowUp: undefined,
-            onBranchFromSelection: undefined,
-            onNavigateToNode: undefined,
-            onDelete: undefined,
-            onMaximize: undefined,
-            // Mark any streaming nodes as interrupted
-            isStreaming: false,
-          }
-        }));
-        onUpdate(serializableNodes, edgesRef.current);
-      }
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Helper to update a specific node's data
-  const updateNodeData = useCallback((nodeId: string, updates: Partial<ConversationNodeData>) => {
-    setNodes((currentNodes) =>
-      currentNodes.map((node) =>
-        node.id === nodeId
-          ? { ...node, data: { ...node.data, ...updates } }
-          : node
-      )
-    );
-  }, [setNodes]);
-
+  // Composition layer: Wire createNode with streaming
   const createConversationNode = useCallback(async (question: string, parentId: string | null) => {
     setIsLoading(true);
-    const timestamp = new Date().toLocaleString();
-    const nodeId = `conversation-${nodeIdCounter.current++}`;
 
-    let conversationHistory: Message[] = [];
-    if (parentId) {
-      conversationHistory = getConversationHistory(parentId, nodesRef.current, edgesRef.current);
-    }
-    conversationHistory.push({ role: 'user', content: question });
-
-    // Create node immediately with empty response and streaming flag
-    const conversationNode: Node<ConversationNodeData> = {
-      id: nodeId,
-      type: 'conversation',
-      position: { x: 0, y: 0 },
-      data: {
+    try {
+      await createNode({
         question,
-        response: '',
-        timestamp,
-        isStreaming: true,
-        exploredSelections: [],
-        onAddFollowUp: async (nId: string, q: string) => {
-          await createConversationNodeRef.current(q, nId);
+        parentId,
+        onStream: async (callbacks: any) => {
+          const conversationHistory = parentId
+            ? getConversationHistory(parentId, nodesRef.current, edgesRef.current)
+            : [];
+          conversationHistory.push({ role: 'user', content: question });
+
+          return await streamChatResponse(
+            { messages: conversationHistory, stream: true },
+            callbacks
+          );
         },
-        onBranchFromSelection: async (nId: string, text: string, q: string, start: number, end: number, fromQ: boolean) => {
-          await createBranchFromSelectionRef.current(nId, text, q, start, end, fromQ);
-        },
-        onNavigateToNode: (nId: string) => navigateToNodeRef.current(nId),
-        onDelete: (nId: string) => handleDeleteNodeRef.current(nId),
-        onMaximize: (nId: string) => enterFullscreenModeRef.current(nId),
-        positioned: false,
-      },
-    };
-
-    // Build the new edge if there's a parent
-    const newEdge = parentId 
-      ? { id: `${parentId}-${nodeId}`, source: parentId, target: nodeId }
-      : null;
-
-    // Calculate the updated edges using the ref (always current)
-    const updatedEdges = newEdge 
-      ? [...edgesRef.current, newEdge] 
-      : [...edgesRef.current];
-
-    // Capture parent position BEFORE layout for compensation
-    const parentNodeBefore = parentId ? nodesRef.current.find(n => n.id === parentId) : null;
-    const parentPosBefore = parentNodeBefore ? { ...parentNodeBefore.position } : null;
-    
-    // Capture current viewport
-    const viewportBefore = reactFlowInstance ? {
-      ...reactFlowInstance.getViewport(),
-      zoom: reactFlowInstance.getZoom()
-    } : null;
-
-    // Update edges
-    setEdges(updatedEdges);
-
-    // Update nodes with layout
-    setNodes((currentNodes) => {
-      const newNodes = [...currentNodes, conversationNode];
-      const { nodes: layoutedNodes } = getLayoutedElements(newNodes, updatedEdges);
-      
-      const nodesWithCallback = layoutedNodes.map(node => ({
-        ...node,
-        data: {
-          ...node.data,
-          onAddFollowUp: async (nId: string, q: string) => {
-            await createConversationNodeRef.current(q, nId);
-          },
-          onBranchFromSelection: async (nId: string, text: string, q: string, start: number, end: number, fromQ: boolean) => {
-            await createBranchFromSelectionRef.current(nId, text, q, start, end, fromQ);
-          },
-          onNavigateToNode: (nId: string) => navigateToNodeRef.current(nId),
-          onDelete: (nId: string) => handleDeleteNodeRef.current(nId),
-          onMaximize: (nId: string) => enterFullscreenModeRef.current(nId),
-        }
-      }));
-      
-      // Schedule viewport compensation after render (outside setNodes callback)
-      const newNode = nodesWithCallback.find(n => n.id === nodeId);
-      
-      if (reactFlowInstance && viewportBefore && parentId && parentPosBefore) {
-        const parentNodeAfter = nodesWithCallback.find(n => n.id === parentId);
-        
-        if (parentNodeAfter && newNode) {
-          const shiftX = parentNodeAfter.position.x - parentPosBefore.x;
-          const shiftY = parentNodeAfter.position.y - parentPosBefore.y;
-          const newNodePos = { x: newNode.position.x, y: newNode.position.y };
-          
-          setTimeout(() => {
-            reactFlowInstance.setViewport({
-              x: viewportBefore.x - shiftX * viewportBefore.zoom,
-              y: viewportBefore.y - shiftY * viewportBefore.zoom,
-              zoom: viewportBefore.zoom
-            }, { duration: 0 });
-            
-            requestAnimationFrame(() => {
-              const nodeWidth = 450;
-              const nodeHeight = 468;
-              const centerX = newNodePos.x + nodeWidth / 2;
-              const centerY = newNodePos.y + nodeHeight / 2;
-              
-              reactFlowInstance.setCenter(centerX, centerY, { 
-                duration: 400,
-                zoom: viewportBefore.zoom
-              });
-            });
-          }, 0);
-        }
-      } else if (newNode) {
-        // First node or reactFlowInstance not ready yet - use fitView with delay
-        const newNodePos = { x: newNode.position.x, y: newNode.position.y };
-        
-        setTimeout(() => {
-          if (reactFlowInstance) {
-            const nodeWidth = 450;
-            const nodeHeight = 468;
-            const centerX = newNodePos.x + nodeWidth / 2;
-            const centerY = newNodePos.y + nodeHeight / 2;
-            
-            const currentZoom = reactFlowInstance.getZoom();
-            const targetZoom = Math.max(currentZoom || 0.8, 0.8);
-            reactFlowInstance.setCenter(centerX, centerY, { 
-              duration: 400,
-              zoom: targetZoom
-            });
-          }
-        }, 100);
-      }
-      
-      return nodesWithCallback;
-    });
-
-    // Now stream the response
-    let fullResponse = '';
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s for streaming
-      
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: conversationHistory, stream: true }),
-        signal: controller.signal,
       });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        // Try to get a clean error message, but don't include raw HTML/JSON payloads
-        let errorMessage = `Request failed (${response.status})`;
-        try {
-          const errorText = await response.text();
-          // Only use the error text if it's a clean JSON error message
-          if (errorText.startsWith('{')) {
-            const errorJson = JSON.parse(errorText);
-            if (errorJson.error) errorMessage = errorJson.error;
-          } else if (errorText.length < 200 && !errorText.includes('<')) {
-            errorMessage = errorText;
-          }
-        } catch { /* ignore parsing errors */ }
-        throw new Error(errorMessage);
-      }
-
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('No response body');
-
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            if (data === '[DONE]') continue;
-            try {
-              const parsed = JSON.parse(data);
-              if (parsed.content) {
-                fullResponse += parsed.content;
-                updateNodeData(nodeId, { response: fullResponse });
-              }
-            } catch { /* skip malformed */ }
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Streaming error:', error);
-      if (error instanceof Error && error.name === 'AbortError') {
-        fullResponse = fullResponse || 'Request timed out. Please try again.';
-      } else if (!fullResponse) {
-        fullResponse = `Sorry, an error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`;
-      }
+    } finally {
+      setIsLoading(false);
     }
+  }, [createNode, getConversationHistory, streamChatResponse, nodesRef, edgesRef]);
 
-    // Mark streaming complete
-    updateNodeData(nodeId, { response: fullResponse, isStreaming: false });
-    setIsLoading(false);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [getConversationHistory, setNodes, setEdges, handleSmartPanning, reactFlowInstance, updateNodeData]);
-
-  // Delete node and all its descendants
-  const handleDeleteNode = useCallback((nodeId: string) => {
-    try {
-      // Get current state from refs (most up-to-date)
-      const currentNodes = nodesRef.current;
-      const currentEdges = edgesRef.current;
-      
-      // Verify the node exists before attempting delete
-      const nodeToDelete = currentNodes.find(n => n.id === nodeId);
-      if (!nodeToDelete) {
-        console.warn('⚠️ Node to delete not found:', nodeId);
-        return;
-      }
-      
-      // Save current state for undo
-      setDeletedState({
-        nodes: currentNodes,
-        edges: currentEdges,
-      });
-      
-      // Find all descendant nodes recursively with cycle protection
-      const findDescendants = (id: string, edges: Edge[], visited: Set<string> = new Set()): string[] => {
-        if (visited.has(id)) {
-          console.warn('⚠️ Cycle detected during delete, breaking at:', id);
-          return [];
-        }
-        visited.add(id);
-        
-        const childEdges = edges.filter(e => e.source === id);
-        const childIds = childEdges.map(e => e.target);
-        const allDescendants = [...childIds];
-        
-        // Recursively find descendants of children
-        childIds.forEach(childId => {
-          allDescendants.push(...findDescendants(childId, edges, visited));
-        });
-        
-        return allDescendants;
-      };
-      
-      // Get all nodes to delete (the node itself + all descendants)
-      const nodesToDelete = new Set([nodeId, ...findDescendants(nodeId, currentEdges)]);
-      
-      // Remove edges connected to deleted nodes
-      const updatedEdges = currentEdges.filter(e => 
-        !nodesToDelete.has(e.source) && !nodesToDelete.has(e.target)
-      );
-      
-      // Also remove any orphaned edges (edges pointing to non-existent nodes)
-      const remainingNodeIds = new Set(
-        currentNodes.filter(n => !nodesToDelete.has(n.id)).map(n => n.id)
-      );
-      const cleanedEdges = updatedEdges.filter(e => 
-        remainingNodeIds.has(e.source) && remainingNodeIds.has(e.target)
-      );
-      
-      // Update state using callback form to avoid race conditions
-      setNodes((currentNodesState) => {
-        // Re-calculate with the most current state
-        const nodesToDeleteSet = new Set([nodeId, ...findDescendants(nodeId, edgesRef.current)]);
-        
-        const remainingNodesFromState = currentNodesState
-          .filter(n => !nodesToDeleteSet.has(n.id))
-          .map(node => {
-            // Clean up exploredSelections that reference any deleted node
-            if (node.data?.exploredSelections && (node.data.exploredSelections as any[]).length > 0) {
-              const cleanedSelections = (node.data.exploredSelections as any[]).filter(
-                (sel: any) => !nodesToDeleteSet.has(sel.childNodeId)
-              );
-              if (cleanedSelections.length !== (node.data.exploredSelections as any[]).length) {
-                return {
-                  ...node,
-                  data: {
-                    ...node.data,
-                    exploredSelections: cleanedSelections,
-                  },
-                };
-              }
-            }
-            return node;
-          });
-        
-        const { nodes: freshLayoutedNodes } = getLayoutedElements(remainingNodesFromState, cleanedEdges);
-        
-        return freshLayoutedNodes.map(node => ({
-          ...node,
-          data: {
-            ...node.data,
-            onAddFollowUp: async (nId: string, q: string) => {
-              await createConversationNodeRef.current(q, nId);
-            },
-            onBranchFromSelection: async (nId: string, text: string, q: string, start: number, end: number, fromQ: boolean) => {
-              await createBranchFromSelectionRef.current(nId, text, q, start, end, fromQ);
-            },
-            onNavigateToNode: (nId: string) => navigateToNodeRef.current(nId),
-            onDelete: (nId: string) => handleDeleteNodeRef.current(nId),
-            onMaximize: (nId: string) => enterFullscreenModeRef.current(nId),
-          }
-        }));
-      });
-      setEdges(cleanedEdges);
-      
-      // Show undo toast
-      setShowUndoToast(true);
-      
-      // Clear any existing timeout
-      if (undoTimeoutRef.current) {
-        clearTimeout(undoTimeoutRef.current);
-      }
-      
-      // Hide toast after 5 seconds
-      undoTimeoutRef.current = setTimeout(() => {
-        setShowUndoToast(false);
-        setDeletedState(null);
-      }, 5000);
-    } catch (error) {
-      console.error('[Delete Node Error]', error);
-      // Still try to remove the node even if there's an error
-      setNodes(prev => prev.filter(n => n.id !== nodeId));
-      setEdges(prev => prev.filter(e => e.source !== nodeId && e.target !== nodeId));
-    }
-  }, [setNodes, setEdges]);
-
-  // Navigate to a specific node (used when clicking on explored selection highlights)
-  const navigateToNode = useCallback((nodeId: string) => {
-    const node = nodesRef.current.find(n => n.id === nodeId);
-    if (!node || !reactFlowInstance) return;
-    
-    // Center on the node with animation
-    const nodeWidth = 450;
-    const nodeHeight = 468;
-    const centerX = node.position.x + nodeWidth / 2;
-    const centerY = node.position.y + nodeHeight / 2;
-    
-    reactFlowInstance.setCenter(centerX, centerY, {
-      duration: 500,
-      zoom: Math.max(reactFlowInstance.getZoom(), 0.8),
-    });
-  }, [reactFlowInstance]);
-
-  // Create a branch from a text selection
+  // Composition layer: Wire createBranchFromSelection with streaming
   const createBranchFromSelection = useCallback(async (
     parentNodeId: string,
     selectedText: string,
@@ -758,68 +191,19 @@ function ConversationCanvasInner({
     isFromQuestion: boolean
   ) => {
     console.log('🌿 Creating branch from selection:', { parentNodeId, selectedText, question });
-    
-    // Create the child node using the existing createConversationNode
-    const timestamp = new Date().toLocaleString();
-    const nodeId = `conversation-${nodeIdCounter.current++}`;
-    
-    // Get conversation history from parent
-    const conversationHistory = getConversationHistory(parentNodeId, nodesRef.current, edgesRef.current);
-    
-    // Add context about the selection to the AI prompt (but not displayed in node)
-    const contextForAI = `Regarding "${selectedText}": ${question}`;
-    conversationHistory.push({ role: 'user', content: contextForAI });
-    
-    // Create node with streaming - display only the user's question (cleaner UI)
-    // Store the selected text as context for display
-    const conversationNode: Node<ConversationNodeData> = {
-      id: nodeId,
-      type: 'conversation',
-      position: { x: 0, y: 0 },
-      data: {
-        question: question,
-        response: '',
-        timestamp,
-        isStreaming: true,
-        exploredSelections: [],
-        selectionContext: selectedText,
-        onAddFollowUp: async (nId: string, q: string) => {
-          await createConversationNodeRef.current(q, nId);
-        },
-        onBranchFromSelection: async (nId: string, text: string, q: string, start: number, end: number, fromQ: boolean) => {
-          await createBranchFromSelectionRef.current(nId, text, q, start, end, fromQ);
-        },
-        onNavigateToNode: (nId: string) => navigateToNodeRef.current(nId),
-        onDelete: (nId: string) => handleDeleteNodeRef.current(nId),
-        onMaximize: (nId: string) => enterFullscreenModeRef.current(nId),
-      },
-    };
-    
-    const newEdge = { id: `${parentNodeId}-${nodeId}`, source: parentNodeId, target: nodeId };
-    const updatedEdges = [...edgesRef.current, newEdge];
-    
-    // Update parent node with the explored selection
+
+    // Placeholder selection that will be updated with real childNodeId
     const exploredSelection = {
       text: selectedText,
       startOffset,
       endOffset,
-      childNodeId: nodeId,
+      childNodeId: '', // Will be updated after createNode
       isFromQuestion,
     };
-    
-    // Capture parent position for viewport compensation
-    const parentNodeBefore = nodesRef.current.find(n => n.id === parentNodeId);
-    const parentPosBefore = parentNodeBefore ? { ...parentNodeBefore.position } : null;
-    const viewportBefore = reactFlowInstance ? {
-      ...reactFlowInstance.getViewport(),
-      zoom: reactFlowInstance.getZoom()
-    } : null;
-    
-    setEdges(updatedEdges);
-    
-    setNodes((currentNodes) => {
-      // Update parent with new explored selection
-      const updatedNodes = currentNodes.map(node => {
+
+    // Update parent node with placeholder selection
+    setNodes((currentNodes: Node[]) =>
+      currentNodes.map((node: Node) => {
         if (node.id === parentNodeId) {
           const existingSelections = (node.data as ConversationNodeData).exploredSelections || [];
           return {
@@ -831,446 +215,70 @@ function ConversationCanvasInner({
           };
         }
         return node;
-      });
-      
-      const newNodes = [...updatedNodes, conversationNode];
-      const { nodes: layoutedNodes } = getLayoutedElements(newNodes, updatedEdges);
-      
-      const nodesWithCallback = layoutedNodes.map(node => ({
-        ...node,
-        data: {
-          ...node.data,
-          onAddFollowUp: async (nId: string, q: string) => {
-            await createConversationNodeRef.current(q, nId);
-          },
-          onBranchFromSelection: async (nId: string, text: string, q: string, start: number, end: number, fromQ: boolean) => {
-            await createBranchFromSelectionRef.current(nId, text, q, start, end, fromQ);
-          },
-          onNavigateToNode: (nId: string) => navigateToNodeRef.current(nId),
-          onDelete: (nId: string) => handleDeleteNodeRef.current(nId),
-          onMaximize: (nId: string) => enterFullscreenModeRef.current(nId),
-        }
-      }));
-      
-      // Schedule viewport compensation after render
-      if (reactFlowInstance && viewportBefore && parentPosBefore) {
-        const parentNodeAfter = nodesWithCallback.find(n => n.id === parentNodeId);
-        const newNode = nodesWithCallback.find(n => n.id === nodeId);
-        
-        if (parentNodeAfter && newNode) {
-          const shiftX = parentNodeAfter.position.x - parentPosBefore.x;
-          const shiftY = parentNodeAfter.position.y - parentPosBefore.y;
-          const newNodePos = { x: newNode.position.x, y: newNode.position.y };
-          
-          // Use setTimeout to move this outside the render cycle
-          setTimeout(() => {
-            reactFlowInstance.setViewport({
-              x: viewportBefore.x - shiftX * viewportBefore.zoom,
-              y: viewportBefore.y - shiftY * viewportBefore.zoom,
-              zoom: viewportBefore.zoom
-            }, { duration: 0 });
-            
-            requestAnimationFrame(() => {
-              const nodeWidth = 450;
-              const nodeHeight = 468;
-              const centerX = newNodePos.x + nodeWidth / 2;
-              const centerY = newNodePos.y + nodeHeight / 2;
-              
-              reactFlowInstance.setCenter(centerX, centerY, { 
-                duration: 400,
-                zoom: viewportBefore.zoom
-              });
-            });
-          }, 0);
-        }
-      }
-      
-      return nodesWithCallback;
+      })
+    );
+
+    // Create child node with streaming
+    const childNodeId = await createNode({
+      question,
+      parentId: parentNodeId,
+      onStream: async (callbacks: any) => {
+        const conversationHistory = getConversationHistory(parentNodeId, nodesRef.current, edgesRef.current);
+        const contextForAI = `Regarding "${selectedText}": ${question}`;
+        conversationHistory.push({ role: 'user', content: contextForAI });
+
+        return await streamChatResponse(
+          { messages: conversationHistory, stream: true },
+          callbacks
+        );
+      },
     });
-    
-    // Stream the response
-    let fullResponse = '';
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000);
-      
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: conversationHistory, stream: true }),
-        signal: controller.signal,
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (!response.ok) {
-        let errorMessage = `Request failed (${response.status})`;
-        try {
-          const errorText = await response.text();
-          if (errorText.startsWith('{')) {
-            const errorJson = JSON.parse(errorText);
-            if (errorJson.error) errorMessage = errorJson.error;
-          }
-        } catch { /* ignore */ }
-        throw new Error(errorMessage);
-      }
-      
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('No response body');
-      
-      const decoder = new TextDecoder();
-      let buffer = '';
-      
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-        
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            if (data === '[DONE]') continue;
-            try {
-              const parsed = JSON.parse(data);
-              if (parsed.content) {
-                fullResponse += parsed.content;
-                updateNodeData(nodeId, { response: fullResponse });
-              }
-            } catch { /* skip */ }
-          }
+
+    // Update the exploredSelection with the real childNodeId
+    setNodes((currentNodes: Node[]) =>
+      currentNodes.map((node: Node) => {
+        if (node.id === parentNodeId) {
+          const selections = (node.data as ConversationNodeData).exploredSelections || [];
+          const updatedSelections = selections.map(sel =>
+            sel.childNodeId === '' && sel.text === selectedText
+              ? { ...sel, childNodeId }
+              : sel
+          );
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              exploredSelections: updatedSelections,
+            },
+          };
         }
-      }
-    } catch (error) {
-      console.error('Streaming error:', error);
-      if (error instanceof Error && error.name === 'AbortError') {
-        fullResponse = fullResponse || 'Request timed out. Please try again.';
-      } else if (!fullResponse) {
-        fullResponse = `Sorry, an error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`;
-      }
-    }
-    
-    updateNodeData(nodeId, { response: fullResponse, isStreaming: false });
-  }, [getConversationHistory, setNodes, setEdges, reactFlowInstance, updateNodeData]);
+        return node;
+      })
+    );
+  }, [createNode, getConversationHistory, streamChatResponse, setNodes, nodesRef, edgesRef]);
 
-  // Refs for new callbacks
-  const createBranchFromSelectionRef = useRef(createBranchFromSelection);
-  const navigateToNodeRef = useRef(navigateToNode);
+  // Refs for callbacks to avoid stale closures
+  const handleDeleteNodeRef = useRef<(nodeId: string) => void>(() => {});
+  const enterFullscreenModeRef = useRef<(nodeId: string) => void>(() => {});
+  const createConversationNodeRef = useRef<(question: string, parentId: string | null) => Promise<void>>(async () => {});
+  const createBranchFromSelectionRef = useRef<any>(() => {});
+  const navigateToNodeRef = useRef<(nodeId: string) => void>(() => {});
 
-  // Keep callback refs updated to avoid stale closures
+  // Keep callback refs updated
   useEffect(() => {
-    handleDeleteNodeRef.current = handleDeleteNode;
+    handleDeleteNodeRef.current = deleteNode;
     enterFullscreenModeRef.current = enterFullscreenMode;
     createConversationNodeRef.current = createConversationNode;
     createBranchFromSelectionRef.current = createBranchFromSelection;
-    navigateToNodeRef.current = navigateToNode;
-  }, [handleDeleteNode, enterFullscreenMode, createConversationNode, createBranchFromSelection, navigateToNode]);
-  
-  // Undo delete
-  const handleUndoDelete = useCallback(() => {
-    if (deletedState) {
-      setNodes(deletedState.nodes);
-      setEdges(deletedState.edges);
-      setShowUndoToast(false);
-      setDeletedState(null);
-      
-      if (undoTimeoutRef.current) {
-        clearTimeout(undoTimeoutRef.current);
-      }
-    }
-  }, [deletedState, setNodes, setEdges]);
-
-  // Create node in background (silent mode - no viewport changes)
-  const createNodeInBackground = useCallback(async (question: string, aiResponse: string) => {
-    try {
-      if (!fullscreenState.activeNodeId) {
-        console.warn('⚠️ Cannot create node: no active node ID');
-        return;
-      }
-      
-      const timestamp = new Date().toLocaleString();
-      const nodeId = `conversation-${nodeIdCounter.current++}`;
-      const parentId = fullscreenState.activeNodeId;
-      
-      console.log('🔧 Creating node in background:', { nodeId, parentId, question: question.substring(0, 50) });
-      
-      // Use refs to get the most current state (avoid stale closure issues)
-      const currentNodes = nodesRef.current;
-      const currentEdges = edgesRef.current;
-      
-      // Verify parent node exists in current state
-      const parentNode = currentNodes.find(n => n.id === parentId);
-      if (!parentNode) {
-        console.error('❌ Parent node not found:', parentId);
-        console.log('Available nodes:', currentNodes.map(n => n.id));
-        return;
-      }
-      console.log('✅ Parent node found:', { id: parentNode.id, position: parentNode.position });
-      
-      // Check if this node already exists (prevent duplicates from race conditions)
-      const existingNode = currentNodes.find(n => 
-        n.data?.question === question && 
-        n.data?.response === aiResponse &&
-        currentEdges.some(e => e.source === parentId && e.target === n.id)
-      );
-      if (existingNode) {
-        console.warn('⚠️ Node already exists, skipping duplicate creation');
-        return;
-      }
-      
-      // Create conversation node
-      const conversationNode: Node<ConversationNodeData> = {
-        id: nodeId,
-        type: 'conversation',
-        position: { x: 0, y: 0 },
-        data: {
-          question,
-          response: aiResponse,
-          timestamp,
-          isStreaming: false, // Explicitly set to false since response is already complete
-          exploredSelections: [],
-          onAddFollowUp: async (nId: string, q: string) => {
-            await createConversationNodeRef.current(q, nId);
-          },
-          onBranchFromSelection: async (nId: string, text: string, q: string, start: number, end: number, fromQ: boolean) => {
-            await createBranchFromSelectionRef.current(nId, text, q, start, end, fromQ);
-          },
-          onNavigateToNode: (nId: string) => navigateToNodeRef.current(nId),
-          onDelete: (nId: string) => handleDeleteNodeRef.current(nId),
-          onMaximize: (nId: string) => enterFullscreenModeRef.current(nId),
-          positioned: false,
-        },
-      };
-      
-      // Create the new edge
-      const newEdge = { id: `${parentId}-${nodeId}`, source: parentId, target: nodeId };
-      
-      // Build new arrays first (avoid nested setState)
-      const newEdges = [...currentEdges, newEdge];
-      
-      console.log('✅ Node created in background, preparing to update state');
-      
-      // Update state using callback form to avoid race conditions
-      setNodes((currentNodesInCallback) => {
-        // Re-run layout with the most current nodes to preserve any updates
-        // that happened while we were processing
-        const existingNodeIds = new Set(currentNodesInCallback.map(n => n.id));
-        
-        // If the node already exists (race condition), skip
-        if (existingNodeIds.has(nodeId)) {
-          console.warn('⚠️ Node already exists in state, skipping');
-          return currentNodesInCallback;
-        }
-        
-        // Merge: keep current nodes' data (preserves exploredSelections etc.)
-        // but use our new node
-        const mergedNodes = [...currentNodesInCallback, conversationNode];
-        const { nodes: freshLayoutedNodes } = getLayoutedElements(mergedNodes, newEdges);
-        
-        console.log('📍 New node position:', freshLayoutedNodes.find(n => n.id === nodeId)?.position);
-        
-        return freshLayoutedNodes.map(node => ({
-          ...node,
-          data: {
-            ...node.data,
-            onAddFollowUp: async (nId: string, q: string) => {
-              await createConversationNodeRef.current(q, nId);
-            },
-            onBranchFromSelection: async (nId: string, text: string, q: string, start: number, end: number, fromQ: boolean) => {
-              await createBranchFromSelectionRef.current(nId, text, q, start, end, fromQ);
-            },
-            onNavigateToNode: (nId: string) => navigateToNodeRef.current(nId),
-            onDelete: (nId: string) => handleDeleteNodeRef.current(nId),
-            onMaximize: (nId: string) => enterFullscreenModeRef.current(nId),
-          }
-        }));
-      });
-      setEdges(newEdges);
-      
-      // Update active node ID to newly created node
-      setFullscreenState(prev => {
-        console.log('✅ Active node updated to:', nodeId);
-        return {
-          ...prev,
-          activeNodeId: nodeId,
-        };
-      });
-    } catch (error) {
-      // Log error but don't throw - messages are already preserved in the conversation thread
-      console.error('[Create Node Error]', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined,
-        timestamp: new Date().toISOString(),
-      });
-      // Messages are already in the conversation thread, so they're preserved
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fullscreenState.activeNodeId, setNodes, setEdges, buildConversationThread]);
-
-  // Handle message sending in fullscreen mode
-  const handleFullscreenMessage = useCallback(async (message: string) => {
-    if (!fullscreenState.activeNodeId) return;
-    
-    console.log('💬 Sending message in fullscreen mode:', message);
-    
-    // Check network status first
-    if (!isOnline) {
-      const errorMsg: Message = {
-        id: `error-${Date.now()}`,
-        role: 'assistant',
-        content: 'No internet connection. Please check your network and try again.',
-        timestamp: new Date().toLocaleString(),
-        isError: true,
-        retryData: { userMessage: message },
-      };
-      
-      setFullscreenState(prev => ({
-        ...prev,
-        conversationThread: [...prev.conversationThread, errorMsg],
-      }));
-      return;
-    }
-    
-    // 1. Add user message to chat immediately
-    const userMessage: Message = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      content: message,
-      timestamp: new Date().toLocaleString(),
-    };
-    
-    setFullscreenState(prev => ({
-      ...prev,
-      conversationThread: [...prev.conversationThread, userMessage],
-    }));
-    
-    // 2. Show typing indicator for AI response
-    setIsFullscreenLoading(true);
-    
-    try {
-      // 3. Call API to generate AI response
-      const conversationHistory = [...fullscreenState.conversationThread, userMessage];
-      
-      console.log('Sending request to /api/chat with messages:', conversationHistory);
-      
-      // Create abort controller for this request
-      const controller = new AbortController();
-      abortControllerRef.current = controller;
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-      
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: conversationHistory }),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-      abortControllerRef.current = null;
-
-      console.log('Response status:', response.status);
-
-      if (!response.ok) {
-        // Try to get a clean error message, but don't include raw HTML/JSON payloads
-        let errorMessage = `Request failed (${response.status})`;
-        try {
-          const errorText = await response.text();
-          console.error('API error response:', errorText.substring(0, 200));
-          // Only use the error text if it's a clean JSON error message
-          if (errorText.startsWith('{')) {
-            const errorJson = JSON.parse(errorText);
-            if (errorJson.error) errorMessage = errorJson.error;
-          } else if (errorText.length < 200 && !errorText.includes('<')) {
-            errorMessage = errorText;
-          }
-        } catch { /* ignore parsing errors */ }
-        throw new Error(errorMessage);
-      }
-
-      const data = await response.json();
-      console.log('API response data:', data);
-      const aiResponse = data.response;
-      
-      // 4. Add AI response to chat when complete
-      const assistantMessage: Message = {
-        id: `assistant-${Date.now()}`,
-        role: 'assistant',
-        content: aiResponse,
-        timestamp: new Date().toLocaleString(),
-      };
-      
-      setFullscreenState(prev => ({
-        ...prev,
-        conversationThread: [...prev.conversationThread, assistantMessage],
-      }));
-      
-      // Now create the node in the background (task 5.2)
-      await createNodeInBackground(message, aiResponse);
-      
-      // Only set loading to false after node creation is complete
-      setIsFullscreenLoading(false);
-      abortControllerRef.current = null;
-      
-    } catch (error) {
-      console.error('Error fetching AI response:', error);
-      
-      let errorMessage = 'Sorry, I encountered an error. Please try again.';
-      let isNetworkError = false;
-      
-      if (error instanceof Error) {
-        if (error.name === 'AbortError') {
-          errorMessage = 'Request timed out. Please check your connection and try again.';
-          isNetworkError = true;
-        } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-          errorMessage = 'Network error. Please check your connection and try again.';
-          isNetworkError = true;
-        } else if (error.message.includes('Request failed')) {
-          errorMessage = `${error.message}. Please try again.`;
-        } else {
-          // Keep error messages short and user-friendly
-          const msg = error.message.length > 100 ? error.message.substring(0, 100) + '...' : error.message;
-          errorMessage = `Error: ${msg}. Please try again.`;
-        }
-      }
-      
-      // Add error message to chat with retry capability
-      const errorMsg: Message = {
-        id: `error-${Date.now()}`,
-        role: 'assistant',
-        content: errorMessage,
-        timestamp: new Date().toLocaleString(),
-        isError: true,
-        retryData: { userMessage: message },
-      };
-      
-      setFullscreenState(prev => ({
-        ...prev,
-        conversationThread: [...prev.conversationThread, errorMsg],
-      }));
-      
-      // Log error for debugging
-      console.error('[Fullscreen Chat Error]', {
-        message: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined,
-        isNetworkError,
-        timestamp: new Date().toISOString(),
-      });
-      
-      // Set loading to false on error
-      setIsFullscreenLoading(false);
-      abortControllerRef.current = null;
-    }
-  }, [fullscreenState.activeNodeId, fullscreenState.conversationThread, createNodeInBackground, isOnline]);
+    // navigateToNode is not yet implemented in this simplified version
+  }, [deleteNode, enterFullscreenMode, createConversationNode, createBranchFromSelection]);
 
   // Restore callbacks to nodes on mount
   useEffect(() => {
     if (!hasInitialized.current && nodes.length > 0) {
       hasInitialized.current = true;
-      // Use callback form to ensure we're working with the latest state
-      setNodes((currentNodes) => 
-        currentNodes.map((node) => ({
+      setNodes((currentNodes: Node[]) =>
+        currentNodes.map((node: Node) => ({
           ...node,
           data: {
             ...node.data,
@@ -1286,8 +294,8 @@ function ConversationCanvasInner({
           },
         }))
       );
-      
-      // Initial fitView on mount when loading existing nodes
+
+      // Initial fitView on mount
       if (reactFlowInstance) {
         setTimeout(() => {
           reactFlowInstance.fitView({ padding: 0.3, maxZoom: 1, duration: 300 });
@@ -1296,43 +304,7 @@ function ConversationCanvasInner({
     }
   }, [nodes, setNodes, reactFlowInstance]);
 
-  // Network status is now handled by useNetworkStatus hook
-
-  // Handle window resize - recalculate animation bounds if in fullscreen
-  useEffect(() => {
-    const handleResize = () => {
-      // If in fullscreen mode (not transitioning), update bounds for potential exit animation
-      if (fullscreenState.isFullscreen && !fullscreenState.isTransitioning && fullscreenState.activeNodeId && reactFlowInstance) {
-        const node = nodesRef.current.find(n => n.id === fullscreenState.activeNodeId);
-        if (node) {
-          const viewport = reactFlowInstance.getViewport();
-          const zoom = reactFlowInstance.getZoom();
-          
-          const screenX = node.position.x * zoom + viewport.x;
-          const screenY = node.position.y * zoom + viewport.y;
-          
-          const nodeWidth = 450;
-          const nodeHeight = 468;
-          
-          const transitionBounds = {
-            x: screenX,
-            y: screenY,
-            width: nodeWidth * zoom,
-            height: nodeHeight * zoom,
-          };
-          
-          setFullscreenState(prev => ({
-            ...prev,
-            transitionBounds,
-          }));
-        }
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [fullscreenState.isFullscreen, fullscreenState.isTransitioning, fullscreenState.activeNodeId, reactFlowInstance]);
-
+  // UI event handlers
   const handleStartConversation = useCallback(async () => {
     const question = searchTerm.trim();
     if (!question) return;
@@ -1351,17 +323,16 @@ function ConversationCanvasInner({
   }, [followUpQuestion, followUpParentId, createConversationNode]);
 
   const onConnect = useCallback(
-    (connection: Connection) => setEdges((eds) => addEdge(connection, eds)),
+    (connection: Connection) => setEdges((eds: Edge[]) => addEdge(connection, eds)),
     [setEdges]
   );
 
-  // Use onMove to detect both pan and zoom interactions (handleUserInteraction from hook)
   const onMove = useCallback(() => {
     handleUserInteraction();
   }, [handleUserInteraction]);
 
   const filteredNodes = searchTerm
-    ? nodes.filter((node) => {
+    ? nodes.filter((node: Node) => {
         if (node.type === 'conversation') {
           const nodeData = node.data as unknown as ConversationNodeData;
           return (
@@ -1373,15 +344,6 @@ function ConversationCanvasInner({
       })
     : nodes;
 
-  // Update body data attribute when fullscreen state changes (for hiding sidebar on mobile)
-  useEffect(() => {
-    if (fullscreenState.isFullscreen || fullscreenState.isTransitioning) {
-      document.body.setAttribute('data-fullscreen', 'true');
-    } else {
-      document.body.removeAttribute('data-fullscreen');
-    }
-  }, [fullscreenState.isFullscreen, fullscreenState.isTransitioning]);
-
   return (
     <div className="w-full h-screen relative">
 
@@ -1390,35 +352,30 @@ function ConversationCanvasInner({
         <div
           className="absolute inset-0 z-40"
           style={{
-            // Creative animation: Fade + Scale effect
-            // Expand: fade in from 0 to 1, scale from 0.96 to 1
-            // Collapse: fade out from 1 to 0, scale from 1 to 0.96
-            opacity: animateToFullscreen 
-              ? 1  // Fade in to full opacity
+            opacity: animateToFullscreen
+              ? 1
               : animateFromFullscreen
-                ? 0  // Fade out to transparent
+                ? 0
                 : fullscreenState.isFullscreen
-                  ? 1  // Fully visible
-                  : 0,  // Start hidden
-            
+                  ? 1
+                  : 0,
+
             transform: animateToFullscreen
-              ? 'scale(1) translateZ(0)'  // Scale to full size
+              ? 'scale(1) translateZ(0)'
               : animateFromFullscreen
-                ? 'scale(0.96) translateZ(0)'  // Scale down slightly
+                ? 'scale(0.96) translateZ(0)'
                 : fullscreenState.isFullscreen
-                  ? 'scale(1) translateZ(0)'  // Full size
-                  : 'scale(0.96) translateZ(0)',  // Start slightly smaller
-            
-            // Smooth transition for both properties
+                  ? 'scale(1) translateZ(0)'
+                  : 'scale(0.96) translateZ(0)',
+
             transition: (animateToFullscreen || animateFromFullscreen)
               ? 'opacity 400ms cubic-bezier(0.4, 0.0, 0.2, 1), transform 400ms cubic-bezier(0.4, 0.0, 0.2, 1)'
               : 'none',
-            
+
             willChange: (animateToFullscreen || animateFromFullscreen)
               ? 'opacity, transform'
               : 'auto',
-            
-            // Prevent interaction during fade out
+
             pointerEvents: animateFromFullscreen ? 'none' : 'auto',
           }}
         >
@@ -1432,16 +389,14 @@ function ConversationCanvasInner({
           />
         </div>
       )}
-      
 
       {/* Network status indicator */}
-      <NetworkStatusIndicator 
-        isOnline={isOnline} 
-        show={fullscreenState.isFullscreen} 
+      <NetworkStatusIndicator
+        isOnline={isOnline}
+        show={fullscreenState.isFullscreen}
       />
-      
 
-      {/* Render canvas when not in fullscreen mode (including during exit transition setup) */}
+      {/* Render canvas when not in fullscreen mode */}
       {!fullscreenState.isFullscreen && (
         <ReactFlow
           nodes={filteredNodes}
@@ -1479,8 +434,8 @@ function ConversationCanvasInner({
               onFitView={() => reactFlowInstance.fitView({ padding: 0.2 })}
             />
 
-            <MiniMap 
-              className="!bg-[hsl(223,28%,10%)] !border-[hsl(220,18%,22%)] !rounded-lg !shadow-2xl !overflow-hidden backdrop-blur-sm" 
+            <MiniMap
+              className="!bg-[hsl(223,28%,10%)] !border-[hsl(220,18%,22%)] !rounded-lg !shadow-2xl !overflow-hidden backdrop-blur-sm"
               maskColor="rgba(13, 17, 23, 0.6)"
               nodeColor="hsl(215, 20%, 65%)"
               nodeStrokeColor="hsl(215, 15%, 45%)"
@@ -1490,7 +445,6 @@ function ConversationCanvasInner({
             />
           </>
         )}
-        
 
         {/* Empty canvas state */}
         {nodes.length === 0 && (
@@ -1502,7 +456,6 @@ function ConversationCanvasInner({
             isLoading={isLoading}
           />
         )}
-
 
         </ReactFlow>
       )}
@@ -1525,9 +478,8 @@ function ConversationCanvasInner({
         }}
       />
 
-
       {/* Undo Delete Toast */}
-      <UndoToast show={showUndoToast} onUndo={handleUndoDelete} />
+      <UndoToast show={showUndoToast} onUndo={undoDelete} />
     </div>
   );
 }
