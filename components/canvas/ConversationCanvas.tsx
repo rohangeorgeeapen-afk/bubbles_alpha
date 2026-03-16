@@ -28,6 +28,7 @@ import { NODE_WIDTH, NODE_HEIGHT } from '@/lib/layout/constants';
 import { useCanvasStore, Message } from '@/lib/stores/canvasStore';
 import { CanvasActionsProvider } from '@/lib/contexts/canvasActionsContext';
 import { useCanvasSearch } from '@/hooks/canvas/useCanvasSearch';
+import { useAIStreaming } from '@/hooks/canvas/useAIStreaming';
 
 const nodeTypes = {
   conversation: ConversationNode as any,
@@ -95,6 +96,9 @@ function ConversationCanvasInner({
 
   // Initialize ReactFlow instance for viewport control
   const reactFlowInstance = useReactFlow();
+
+  // Initialize AI streaming hook
+  const aiStreaming = useAIStreaming({ timeout: 30000 });
 
   // Panning queue management - now use refs to access Zustand state
   const panQueueRef = useRef(panQueue);
@@ -664,41 +668,8 @@ function ConversationCanvasInner({
     }
     conversationHistory.push({ role: 'user', content: question });
 
-    let aiResponse = '';
-    try {
-      console.log('Sending request to /api/chat with messages:', conversationHistory);
-      
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-      
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: conversationHistory }),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      console.log('Response status:', response.status);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API error response:', errorText);
-        throw new Error(`Failed to get AI response: ${response.status} ${errorText}`);
-      }
-
-      const data = await response.json();
-      console.log('API response data:', data);
-      aiResponse = data.response;
-    } catch (error) {
-      console.error('Error fetching AI response:', error);
-      if (error instanceof Error && error.name === 'AbortError') {
-        aiResponse = 'Request timed out. Please try again.';
-      } else {
-        aiResponse = `Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`;
-      }
-    }
+    // Use the AI streaming hook to get response
+    const { response: aiResponse } = await aiStreaming.sendMessage(conversationHistory);
 
     const conversationNode: Node<ConversationNodeData> = {
       id: nodeId,
@@ -765,7 +736,7 @@ function ConversationCanvasInner({
 
     setIsLoading(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [getConversationHistory, setNodes, setEdges, handleSmartPanning, reactFlowInstance, setIsLoading]);
+  }, [getConversationHistory, setNodes, setEdges, handleSmartPanning, reactFlowInstance, setIsLoading, aiStreaming]);
 
   // Delete node and all its descendants
   const handleDeleteNode = useCallback((nodeId: string) => {
@@ -934,9 +905,9 @@ function ConversationCanvasInner({
   // Handle message sending in fullscreen mode
   const handleFullscreenMessage = useCallback(async (message: string) => {
     if (!fullscreenState.activeNodeId) return;
-    
+
     console.log('💬 Sending message in fullscreen mode:', message);
-    
+
     // Check network status first
     if (!isOnline) {
       const errorMsg: Message = {
@@ -947,14 +918,14 @@ function ConversationCanvasInner({
         isError: true,
         retryData: { userMessage: message },
       };
-      
+
       setFullscreenState(prev => ({
         ...prev,
         conversationThread: [...prev.conversationThread, errorMsg],
       }));
       return;
     }
-    
+
     // 1. Add user message to chat immediately
     const userMessage: Message = {
       id: `user-${Date.now()}`,
@@ -962,48 +933,30 @@ function ConversationCanvasInner({
       content: message,
       timestamp: new Date().toLocaleString(),
     };
-    
+
     setFullscreenState(prev => ({
       ...prev,
       conversationThread: [...prev.conversationThread, userMessage],
     }));
-    
+
     // 2. Show typing indicator for AI response
     setIsFullscreenLoading(true);
-    
+
     try {
       // 3. Call API to generate AI response
       const conversationHistory = [...fullscreenState.conversationThread, userMessage];
-      
+
       console.log('Sending request to /api/chat with messages:', conversationHistory);
-      
-      // Create abort controller for this request
-      const controller = new AbortController();
-      setAbortController(controller);
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: conversationHistory }),
-        signal: controller.signal,
-      });
+      // Use the AI streaming hook to get response
+      const { response: aiResponse, error } = await aiStreaming.sendMessage(conversationHistory);
 
-      clearTimeout(timeoutId);
-      setAbortController(null);
-
-      console.log('Response status:', response.status);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API error response:', errorText);
-        throw new Error(`API error (${response.status}): ${errorText || 'Unknown error'}`);
+      if (error) {
+        throw error;
       }
 
-      const data = await response.json();
-      console.log('API response data:', data);
-      const aiResponse = data.response;
-      
+      console.log('API response data:', aiResponse);
+
       // 4. Add AI response to chat when complete
       const assistantMessage: Message = {
         id: `assistant-${Date.now()}`,
@@ -1011,15 +964,15 @@ function ConversationCanvasInner({
         content: aiResponse,
         timestamp: new Date().toLocaleString(),
       };
-      
+
       setFullscreenState(prev => ({
         ...prev,
         conversationThread: [...prev.conversationThread, assistantMessage],
       }));
-      
+
       // Now create the node in the background (task 5.2)
       await createNodeInBackground(message, aiResponse);
-      
+
       // Only set loading to false after node creation is complete
       setIsFullscreenLoading(false);
       setAbortController(null);
@@ -1071,7 +1024,7 @@ function ConversationCanvasInner({
       setIsFullscreenLoading(false);
       setAbortController(null);
     }
-  }, [fullscreenState.activeNodeId, fullscreenState.conversationThread, createNodeInBackground, isOnline, setAbortController, setIsFullscreenLoading, setFullscreenState]);
+  }, [fullscreenState.activeNodeId, fullscreenState.conversationThread, createNodeInBackground, isOnline, setAbortController, setIsFullscreenLoading, setFullscreenState, aiStreaming]);
 
   // Handle retry for failed messages
   const handleRetryMessage = useCallback(async (messageId: string) => {
