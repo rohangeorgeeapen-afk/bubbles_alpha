@@ -5,3 +5,5 @@ export { useCanvasData } from './useCanvasData';
 export type { CanvasData } from './useCanvasData';
 export { useStreamingChat } from './useStreamingChat';
 export type { StreamChatOptions, StreamChatCallbacks } from './useStreamingChat';
+export { useLayoutEngine } from './useLayoutEngine';
+export type { UseLayoutEngineProps, CompensateViewportParams } from './useLayoutEngine';
