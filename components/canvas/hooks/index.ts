@@ -9,3 +9,5 @@ export { useLayoutEngine } from './useLayoutEngine';
 export type { UseLayoutEngineProps, CompensateViewportParams } from './useLayoutEngine';
 export { useCanvasPersistence } from './useCanvasPersistence';
 export type { UseCanvasPersistenceProps, UseCanvasPersistenceReturn } from './useCanvasPersistence';
+export { useNodeManager } from './useNodeManager';
+export type { UseNodeManagerProps, StreamingCallbacks, CreateNodeParams, CreateNodeInBackgroundParams } from './useNodeManager';
