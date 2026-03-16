@@ -7,17 +7,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ArrowUp, Maximize2, X } from 'lucide-react';
 import MarkdownContent from '@/components/shared/MarkdownContent';
+import { useCanvasActions } from '@/lib/contexts/canvasActionsContext';
 
 export interface ConversationNodeData extends Record<string, unknown> {
   question: string;
   response: string;
   timestamp: string;
-  onAddFollowUp: (nodeId: string, question: string) => Promise<void>;
-  onDelete?: (nodeId: string) => void;
-  onMaximize?: (nodeId: string) => void;
+  // Callbacks are now provided via context, not props
 }
 
 export default function ConversationNode({ id, data }: NodeProps<any>) {
+  // Get actions from context instead of props
+  const { onAddFollowUp, onDelete, onMaximize } = useCanvasActions();
   const totalLength = data.question.length + data.response.length;
   const isLongContent = totalLength > 600;
   const [followUpText, setFollowUpText] = useState('');
@@ -81,17 +82,17 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
       >
         {/* Header with OS-specific window control buttons */}
         <div className="h-8 bg-[#2a2a2a] border-b border-[#4d4d4d] flex items-center px-3 flex-shrink-0 justify-between">
-          {data.onDelete && (
+          {onDelete && (
             <>
               {isMac ? (
                 /* macOS-style buttons on the left */
                 <div className="flex gap-2 nodrag nopan">
                   {/* Red button - Close/Delete */}
                   <button
-                    onClick={() => data.onDelete?.(id)}
+                    onClick={() => onDelete(id)}
                     className={`w-3 h-3 rounded-full ${prefersReducedMotion ? '' : 'transition-all duration-200'} group relative ${
-                      isHovered 
-                        ? 'bg-[#ff5f57] hover:bg-[#ff3b30]' 
+                      isHovered
+                        ? 'bg-[#ff5f57] hover:bg-[#ff3b30]'
                         : 'bg-[#5a5a5a]'
                     }`}
                     aria-label="Delete this node and all its children"
@@ -105,12 +106,12 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
                       </span>
                     )}
                   </button>
-                  
+
                   {/* Yellow button - Minimize */}
                   <button
                     className={`w-3 h-3 rounded-full ${prefersReducedMotion ? '' : 'transition-all duration-200'} cursor-default ${
-                      isHovered 
-                        ? 'bg-[#ffbd2e] hover:bg-[#ffaa00]' 
+                      isHovered
+                        ? 'bg-[#ffbd2e] hover:bg-[#ffaa00]'
                         : 'bg-[#5a5a5a]'
                     }`}
                     aria-label="Minimize (decorative)"
@@ -118,13 +119,13 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
                     aria-hidden="true"
                   >
                   </button>
-                  
+
                   {/* Green button - Maximize */}
                   <button
-                    onClick={() => data.onMaximize?.(id)}
+                    onClick={() => onMaximize(id)}
                     className={`w-3 h-3 rounded-full ${prefersReducedMotion ? '' : 'transition-all duration-200'} group relative ${
-                      isHovered 
-                        ? 'bg-[#28c840] hover:bg-[#20a034] cursor-pointer' 
+                      isHovered
+                        ? 'bg-[#28c840] hover:bg-[#20a034] cursor-pointer'
                         : 'bg-[#5a5a5a] cursor-default'
                     }`}
                     aria-label="Maximize to fullscreen"
@@ -145,8 +146,8 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
                   {/* Minimize button */}
                   <button
                     className={`w-11 h-8 flex items-center justify-center ${prefersReducedMotion ? '' : 'transition-colors'} ${
-                      isHovered 
-                        ? 'hover:bg-[#3a3a3a]' 
+                      isHovered
+                        ? 'hover:bg-[#3a3a3a]'
                         : ''
                     }`}
                     aria-label="Minimize (decorative)"
@@ -157,13 +158,13 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
                       <rect width="10" height="1" fill="currentColor"/>
                     </svg>
                   </button>
-                  
+
                   {/* Maximize button */}
                   <button
-                    onClick={() => data.onMaximize?.(id)}
+                    onClick={() => onMaximize(id)}
                     className={`w-11 h-8 flex items-center justify-center rounded ${prefersReducedMotion ? '' : 'transition-colors'} ${
-                      isHovered 
-                        ? 'hover:bg-[#3a3a3a] cursor-pointer' 
+                      isHovered
+                        ? 'hover:bg-[#3a3a3a] cursor-pointer'
                         : 'cursor-default'
                     }`}
                     aria-label="Maximize to fullscreen"
@@ -171,13 +172,13 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
                   >
                     <Maximize2 className="w-4 h-4 text-[#ececec]" />
                   </button>
-                  
+
                   {/* Close button */}
                   <button
-                    onClick={() => data.onDelete?.(id)}
+                    onClick={() => onDelete(id)}
                     className={`w-11 h-8 flex items-center justify-center rounded ${prefersReducedMotion ? '' : 'transition-colors'} ${
-                      isHovered 
-                        ? 'hover:bg-[#e81123]' 
+                      isHovered
+                        ? 'hover:bg-[#e81123]'
                         : ''
                     }`}
                     aria-label="Delete this node and all its children"
@@ -250,12 +251,12 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
                     const question = followUpText.trim();
                     setFollowUpText('');
                     setIsSubmitting(true);
-                    
+
                     // Small delay to ensure React flushes the state update
                     await new Promise(resolve => setTimeout(resolve, 0));
-                    
+
                     try {
-                      await data.onAddFollowUp(id, question);
+                      await onAddFollowUp(id, question);
                     } finally {
                       setIsSubmitting(false);
                     }
@@ -271,12 +272,12 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
                     const question = followUpText.trim();
                     setFollowUpText('');
                     setIsSubmitting(true);
-                    
+
                     // Small delay to ensure React flushes the state update
                     await new Promise(resolve => setTimeout(resolve, 0));
-                    
+
                     try {
-                      await data.onAddFollowUp(id, question);
+                      await onAddFollowUp(id, question);
                     } finally {
                       setIsSubmitting(false);
                     }

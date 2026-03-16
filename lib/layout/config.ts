@@ -3,6 +3,7 @@
  */
 
 import { LayoutConfig } from './types';
+import { NODE_WIDTH, NODE_HEIGHT } from './constants';
 
 /**
  * Default layout configuration constants
@@ -10,8 +11,8 @@ import { LayoutConfig } from './types';
  */
 export const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
   // Node dimensions - match actual ConversationNode size
-  nodeWidth: 450,
-  nodeHeight: 468,
+  nodeWidth: NODE_WIDTH,
+  nodeHeight: NODE_HEIGHT,
   
   // Spacing configuration
   horizontalSpacing: 50, // Minimum horizontal space between sibling nodes
