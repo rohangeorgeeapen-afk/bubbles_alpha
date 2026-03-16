@@ -7,3 +7,5 @@ export { useStreamingChat } from './useStreamingChat';
 export type { StreamChatOptions, StreamChatCallbacks } from './useStreamingChat';
 export { useLayoutEngine } from './useLayoutEngine';
 export type { UseLayoutEngineProps, CompensateViewportParams } from './useLayoutEngine';
+export { useCanvasPersistence } from './useCanvasPersistence';
+export type { UseCanvasPersistenceProps, UseCanvasPersistenceReturn } from './useCanvasPersistence';
