@@ -10,6 +10,7 @@ import MarkdownContent from '@/components/shared/MarkdownContent';
 import { useTextSelection, DisambiguationMenu } from './selection';
 import HighlightedText from './selection/HighlightedText';
 import type { ExploredSelection } from './types';
+import { useCanvasCallbacks } from './contexts/CanvasCallbackContext';
 
 export interface ConversationNodeData extends Record<string, unknown> {
   question: string;
@@ -19,14 +20,18 @@ export interface ConversationNodeData extends Record<string, unknown> {
   exploredSelections?: ExploredSelection[];
   /** The text that was selected to create this branch (shown as context) */
   selectionContext?: string;
-  onAddFollowUp: (nodeId: string, question: string) => Promise<void>;
-  onBranchFromSelection?: (nodeId: string, selectedText: string, question: string, startOffset: number, endOffset: number, isFromQuestion: boolean) => Promise<void>;
-  onNavigateToNode?: (nodeId: string) => void;
-  onDelete?: (nodeId: string) => void;
-  onMaximize?: (nodeId: string) => void;
 }
 
 export default function ConversationNode({ id, data }: NodeProps<any>) {
+  // Get callbacks from context
+  const {
+    onAddFollowUp,
+    onBranchFromSelection,
+    onNavigateToNode,
+    onDelete,
+    onMaximize,
+  } = useCanvasCallbacks();
+
   const question = data.question || '';
   const response = data.response || '';
   const totalLength = question.length + response.length;
@@ -57,11 +62,11 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
 
   // Handle branch button click - create branch with selected text + input text
   const handleBranchClick = useCallback(async () => {
-    if (!activeSelection || !followUpText.trim() || !data.onBranchFromSelection) return;
-    
+    if (!activeSelection || !followUpText.trim()) return;
+
     setIsSubmitting(true);
     try {
-      await data.onBranchFromSelection(
+      await onBranchFromSelection(
         id,
         activeSelection.text,
         followUpText.trim(),
@@ -74,42 +79,42 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
     } finally {
       setIsSubmitting(false);
     }
-  }, [activeSelection, followUpText, data, id, clearAllSelections]);
+  }, [activeSelection, followUpText, onBranchFromSelection, id, clearAllSelections]);
 
   // Handle regular follow-up (no selection)
   const handleSubmitFollowUp = useCallback(async () => {
     if (!followUpText.trim() || isSubmitting) return;
-    
+
     const q = followUpText.trim();
     setFollowUpText('');
     setIsSubmitting(true);
     try {
-      await data.onAddFollowUp(id, q);
+      await onAddFollowUp(id, q);
     } finally {
       setIsSubmitting(false);
     }
-  }, [followUpText, isSubmitting, data, id]);
+  }, [followUpText, isSubmitting, onAddFollowUp, id]);
 
   // Handle highlight click (for explored selections)
   const handleHighlightClick = useCallback((selections: ExploredSelection[]) => {
     if (selections.length === 1) {
-      data.onNavigateToNode?.(selections[0].childNodeId);
+      onNavigateToNode(selections[0].childNodeId);
     } else {
       // For disambiguation, create a dummy rect at center of screen
       const rect = new DOMRect(window.innerWidth / 2, window.innerHeight / 2, 0, 0);
       setDisambiguationState({ selections, rect });
     }
-  }, [data]);
+  }, [onNavigateToNode]);
 
   // Handle single highlight click by childNodeId
   const handleResponseHighlightClick = useCallback((childNodeId: string) => {
-    data.onNavigateToNode?.(childNodeId);
-  }, [data]);
+    onNavigateToNode(childNodeId);
+  }, [onNavigateToNode]);
 
   const handleSelectBranch = useCallback((childNodeId: string) => {
-    data.onNavigateToNode?.(childNodeId);
+    onNavigateToNode(childNodeId);
     setDisambiguationState(null);
-  }, [data]);
+  }, [onNavigateToNode]);
 
   useEffect(() => {
     setIsMac(window.navigator.userAgent.toLowerCase().includes('mac'));
@@ -144,12 +149,12 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
       >
         {/* Header */}
         <div className="h-8 bg-void border-b border-border-subtle flex items-center px-3 flex-shrink-0 justify-between relative">
-          {data.onDelete && (
+          {onDelete && (
             <>
               {isMac ? (
                 <div className="flex gap-2 nodrag nopan">
                   <button
-                    onClick={() => data.onDelete?.(id)}
+                    onClick={() => onDelete(id)}
                     className={`w-3 h-3 rounded-full transition-colors group relative ${isHovered ? 'bg-error hover:bg-error/80' : 'bg-border-strong'}`}
                     aria-label="Delete node"
                   >
@@ -161,7 +166,7 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
                   </button>
                   <button className={`w-3 h-3 rounded-full cursor-default ${isHovered ? 'bg-warning' : 'bg-border-strong'}`} aria-hidden="true" />
                   <button
-                    onClick={() => data.onMaximize?.(id)}
+                    onClick={() => onMaximize(id)}
                     className={`w-3 h-3 rounded-full transition-colors group relative ${isHovered ? 'bg-success hover:bg-success/80 cursor-pointer' : 'bg-border-strong cursor-default'}`}
                     aria-label="Maximize"
                   >
@@ -177,10 +182,10 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
                   <button className="w-8 h-8 flex items-center justify-center opacity-40 cursor-default" aria-hidden="true">
                     <div className="w-2.5 h-0.5 bg-text-tertiary" />
                   </button>
-                  <button onClick={() => data.onMaximize?.(id)} className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${isHovered ? 'hover:bg-elevated cursor-pointer' : 'cursor-default'}`} aria-label="Maximize">
+                  <button onClick={() => onMaximize(id)} className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${isHovered ? 'hover:bg-elevated cursor-pointer' : 'cursor-default'}`} aria-label="Maximize">
                     <Maximize2 className="w-3.5 h-3.5 text-text-tertiary" />
                   </button>
-                  <button onClick={() => data.onDelete?.(id)} className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${isHovered ? 'hover:bg-error-muted' : ''}`} aria-label="Delete">
+                  <button onClick={() => onDelete(id)} className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${isHovered ? 'hover:bg-error-muted' : ''}`} aria-label="Delete">
                     <X className="w-3.5 h-3.5 text-text-tertiary hover:text-error" />
                   </button>
                 </div>
@@ -263,7 +268,7 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
         {/* Footer */}
         <div className="border-t border-border-subtle bg-void select-none">
           {/* Selected text preview - only rendered when active */}
-          {activeSelection && data.onBranchFromSelection && (
+          {activeSelection && (
             <div className="px-4 pt-2 pb-1">
               <div className="flex items-center gap-2 text-xs">
                 <GitBranch className="w-3 h-3 text-action-primary flex-shrink-0" />
@@ -313,7 +318,7 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
                 onKeyDown={async (e) => {
                   if (e.key === 'Enter' && !e.shiftKey && followUpText.trim()) {
                     e.preventDefault();
-                    if (activeSelection && data.onBranchFromSelection) {
+                    if (activeSelection) {
                       await handleBranchClick();
                     } else {
                       await handleSubmitFollowUp();
@@ -327,10 +332,10 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
               />
               {/* Submit/Branch button */}
               <Button
-                onClick={activeSelection && data.onBranchFromSelection ? handleBranchClick : handleSubmitFollowUp}
+                onClick={activeSelection ? handleBranchClick : handleSubmitFollowUp}
                 disabled={!followUpText.trim() || isSubmitting}
                 className={`shrink-0 h-6 p-0 rounded-md transition-colors select-none disabled:opacity-30 disabled:cursor-not-allowed ${
-                  activeSelection && data.onBranchFromSelection
+                  activeSelection
                     ? 'w-auto px-2 bg-action-primary/10 hover:bg-action-primary/20 text-action-primary border border-action-primary/30 disabled:bg-transparent'
                     : 'w-6 bg-action-primary hover:bg-action-primary-hover text-action-primary-text disabled:bg-elevated'
                 }`}
@@ -338,7 +343,7 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
               >
                 {isSubmitting ? (
                   <div className="w-3 h-3 border-2 border-border-strong border-t-action-primary rounded-full animate-spin" />
-                ) : activeSelection && data.onBranchFromSelection ? (
+                ) : activeSelection ? (
                   <div className="flex items-center gap-1">
                     <GitBranch className="w-3 h-3" strokeWidth={2} />
                     <span className="text-xs font-medium">Branch</span>
