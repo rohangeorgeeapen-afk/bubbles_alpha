@@ -128,10 +128,8 @@ export function useNodeManager({
           timestamp,
           isStreaming: true,
           exploredSelections: [],
-          // Callbacks will be injected by composition layer
-          onAddFollowUp: async () => {},
           positioned: false,
-        } as any, // Callbacks injected later
+        } as any,
       };
 
       // Build the new edge if there's a parent
@@ -240,8 +238,6 @@ export function useNodeManager({
             timestamp,
             isStreaming: false,
             exploredSelections: [],
-            // Callbacks will be injected by composition layer
-            onAddFollowUp: async () => {},
             positioned: false,
           } as any,
         };

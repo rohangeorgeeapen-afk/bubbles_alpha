@@ -24,6 +24,7 @@ import CanvasControls from './CanvasControls';
 import UndoToast from './UndoToast';
 import NetworkStatusIndicator from './NetworkStatusIndicator';
 import { FollowUpDialog, ExitConfirmationDialog } from './CanvasDialogs';
+import { CanvasCallbackProvider } from './contexts/CanvasCallbackContext';
 
 // Extracted hooks
 import {
@@ -322,52 +323,29 @@ function ConversationCanvasInner({
     }
   }, [createNode, getConversationHistory, streamChatResponse, setNodes, nodesRef, edgesRef, reactFlowInstance, compensateViewportAfterLayout]);
 
-  // Refs for callbacks to avoid stale closures
-  const handleDeleteNodeRef = useRef<(nodeId: string) => void>(() => {});
-  const enterFullscreenModeRef = useRef<(nodeId: string) => void>(() => {});
-  const createConversationNodeRef = useRef<(question: string, parentId: string | null) => Promise<void>>(async () => {});
-  const createBranchFromSelectionRef = useRef<any>(() => {});
-  const navigateToNodeRef = useRef<(nodeId: string) => void>(() => {});
+  // Navigate to a specific node
+  const navigateToNode = useCallback((nodeId: string) => {
+    if (!reactFlowInstance) return;
 
-  // Keep callback refs updated
-  useEffect(() => {
-    handleDeleteNodeRef.current = deleteNode;
-    enterFullscreenModeRef.current = enterFullscreenMode;
-    createConversationNodeRef.current = createConversationNode;
-    createBranchFromSelectionRef.current = createBranchFromSelection;
-    // navigateToNode is not yet implemented in this simplified version
-  }, [deleteNode, enterFullscreenMode, createConversationNode, createBranchFromSelection]);
-
-  // Restore callbacks to nodes on mount
-  useEffect(() => {
-    if (!hasInitialized.current && nodes.length > 0) {
-      hasInitialized.current = true;
-      setNodes((currentNodes: Node[]) =>
-        currentNodes.map((node: Node) => ({
-          ...node,
-          data: {
-            ...node.data,
-            onAddFollowUp: async (nodeId: string, q: string) => {
-              await createConversationNodeRef.current(q, nodeId);
-            },
-            onBranchFromSelection: async (nodeId: string, text: string, q: string, start: number, end: number, fromQ: boolean) => {
-              await createBranchFromSelectionRef.current(nodeId, text, q, start, end, fromQ);
-            },
-            onNavigateToNode: (nodeId: string) => navigateToNodeRef.current(nodeId),
-            onDelete: (nodeId: string) => handleDeleteNodeRef.current(nodeId),
-            onMaximize: (nodeId: string) => enterFullscreenModeRef.current(nodeId),
-          },
-        }))
+    const node = nodesRef.current.find((n: Node) => n.id === nodeId);
+    if (node) {
+      reactFlowInstance.setCenter(
+        node.position.x + 225, // node width is 450, so center is at 225
+        node.position.y + 234, // node height is 468, so center is at 234
+        { zoom: 1, duration: 800 }
       );
-
-      // Initial fitView on mount
-      if (reactFlowInstance) {
-        setTimeout(() => {
-          reactFlowInstance.fitView({ padding: 0.3, maxZoom: 1, duration: 300 });
-        }, 100);
-      }
     }
-  }, [nodes, setNodes, reactFlowInstance]);
+  }, [reactFlowInstance, nodesRef]);
+
+  // Initial fitView on mount
+  useEffect(() => {
+    if (!hasInitialized.current && nodes.length > 0 && reactFlowInstance) {
+      hasInitialized.current = true;
+      setTimeout(() => {
+        reactFlowInstance.fitView({ padding: 0.3, maxZoom: 1, duration: 300 });
+      }, 100);
+    }
+  }, [nodes.length, reactFlowInstance]);
 
   // UI event handlers
   const handleStartConversation = useCallback(async () => {
@@ -410,7 +388,25 @@ function ConversationCanvasInner({
     : nodes;
 
   return (
-    <div className="w-full h-screen relative">
+    <CanvasCallbackProvider
+      onAddFollowUp={async (nodeId: string, question: string) => {
+        await createConversationNode(question, nodeId);
+      }}
+      onBranchFromSelection={async (
+        nodeId: string,
+        selectedText: string,
+        question: string,
+        startOffset: number,
+        endOffset: number,
+        isFromQuestion: boolean
+      ) => {
+        await createBranchFromSelection(nodeId, selectedText, question, startOffset, endOffset, isFromQuestion);
+      }}
+      onNavigateToNode={navigateToNode}
+      onDelete={deleteNode}
+      onMaximize={enterFullscreenMode}
+    >
+      <div className="w-full h-screen relative">
 
       {/* Render fullscreen chat view with smooth fade + scale animation */}
       {(fullscreenState.isFullscreen || fullscreenState.isTransitioning) && (
@@ -546,6 +542,7 @@ function ConversationCanvasInner({
       {/* Undo Delete Toast */}
       <UndoToast show={showUndoToast} onUndo={undoDelete} />
     </div>
+    </CanvasCallbackProvider>
   );
 }
 
