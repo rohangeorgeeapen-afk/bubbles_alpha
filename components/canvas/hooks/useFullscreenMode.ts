@@ -13,7 +13,7 @@ export interface UseFullscreenModeProps {
     question: string;
     response: string;
     parentId: string;
-  }) => Promise<void>;
+  }) => Promise<string | undefined>;
 }
 
 export interface UseFullscreenModeReturn {
@@ -327,13 +327,21 @@ export function useFullscreenMode({
         conversationThread: [...prev.conversationThread, assistantMessage],
       }));
 
-      // Now create the node in the background if callback provided
+      // BUG 3 FIX: Create node in background and update activeNodeId for chaining
       if (onCreateNodeInBackground && fullscreenState.activeNodeId) {
-        await onCreateNodeInBackground({
+        const newNodeId = await onCreateNodeInBackground({
           question: message,
           response: aiResponse,
           parentId: fullscreenState.activeNodeId,
         });
+
+        // Update activeNodeId so next message chains off this response
+        if (newNodeId) {
+          setFullscreenState((prev: FullscreenState) => ({
+            ...prev,
+            activeNodeId: newNodeId,
+          }));
+        }
       }
 
       // Only set loading to false after node creation is complete

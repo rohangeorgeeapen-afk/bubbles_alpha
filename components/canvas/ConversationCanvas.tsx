@@ -34,6 +34,7 @@ import {
   useNodeManager,
   useFullscreenMode,
   useCanvasPersistence,
+  useLayoutEngine,
 } from './hooks';
 
 import type { ConversationCanvasProps } from './types';
@@ -104,6 +105,13 @@ function ConversationCanvasInner({
   const { handleSmartPanning, handleUserInteraction, reactFlowInstance } = useSmartPanning();
   const { streamChatResponse, abortStream } = useStreamingChat();
 
+  // Layout Engine hook
+  const { compensateViewportAfterLayout } = useLayoutEngine({
+    reactFlowInstance,
+    nodeWidth: 450,
+    nodeHeight: 468,
+  });
+
   // Node Manager hook
   const {
     createNode,
@@ -161,7 +169,22 @@ function ConversationCanvasInner({
     setIsLoading(true);
 
     try {
-      await createNode({
+      // BUG 2 FIX: Capture viewport state BEFORE createNode runs layout
+      let parentPosBefore: { x: number; y: number } | null = null;
+      let viewportBefore: { x: number; y: number; zoom: number } | null = null;
+
+      if (parentId && reactFlowInstance) {
+        const parentNode = nodesRef.current.find((n: Node) => n.id === parentId);
+        if (parentNode) {
+          parentPosBefore = { ...parentNode.position };
+          viewportBefore = {
+            ...reactFlowInstance.getViewport(),
+            zoom: reactFlowInstance.getZoom()
+          };
+        }
+      }
+
+      const newNodeId = await createNode({
         question,
         parentId,
         onStream: async (callbacks: any) => {
@@ -176,10 +199,22 @@ function ConversationCanvasInner({
           );
         },
       });
+
+      // BUG 2 FIX: Compensate viewport after layout
+      if (parentId && parentPosBefore && viewportBefore && reactFlowInstance) {
+        compensateViewportAfterLayout({
+          parentId,
+          newNodeId,
+          nodesBeforeLayout: nodesRef.current,
+          nodesAfterLayout: nodesRef.current,
+          parentPosBefore,
+          viewportBefore,
+        });
+      }
     } finally {
       setIsLoading(false);
     }
-  }, [createNode, getConversationHistory, streamChatResponse, nodesRef, edgesRef]);
+  }, [createNode, getConversationHistory, streamChatResponse, nodesRef, edgesRef, reactFlowInstance, compensateViewportAfterLayout]);
 
   // Composition layer: Wire createBranchFromSelection with streaming
   const createBranchFromSelection = useCallback(async (
@@ -191,6 +226,21 @@ function ConversationCanvasInner({
     isFromQuestion: boolean
   ) => {
     console.log('🌿 Creating branch from selection:', { parentNodeId, selectedText, question });
+
+    // BUG 4a FIX: Capture viewport state BEFORE createNode runs layout
+    let parentPosBefore: { x: number; y: number } | null = null;
+    let viewportBefore: { x: number; y: number; zoom: number } | null = null;
+
+    if (reactFlowInstance) {
+      const parentNode = nodesRef.current.find((n: Node) => n.id === parentNodeId);
+      if (parentNode) {
+        parentPosBefore = { ...parentNode.position };
+        viewportBefore = {
+          ...reactFlowInstance.getViewport(),
+          zoom: reactFlowInstance.getZoom()
+        };
+      }
+    }
 
     // Placeholder selection that will be updated with real childNodeId
     const exploredSelection = {
@@ -234,13 +284,16 @@ function ConversationCanvasInner({
       },
     });
 
-    // Update the exploredSelection with the real childNodeId
+    // BUG 4b FIX: Update the exploredSelection with the real childNodeId - match by all fields
     setNodes((currentNodes: Node[]) =>
       currentNodes.map((node: Node) => {
         if (node.id === parentNodeId) {
           const selections = (node.data as ConversationNodeData).exploredSelections || [];
           const updatedSelections = selections.map(sel =>
-            sel.childNodeId === '' && sel.text === selectedText
+            sel.childNodeId === '' &&
+            sel.text === selectedText &&
+            sel.startOffset === startOffset &&
+            sel.endOffset === endOffset
               ? { ...sel, childNodeId }
               : sel
           );
@@ -255,7 +308,19 @@ function ConversationCanvasInner({
         return node;
       })
     );
-  }, [createNode, getConversationHistory, streamChatResponse, setNodes, nodesRef, edgesRef]);
+
+    // BUG 4a FIX: Compensate viewport after layout
+    if (parentPosBefore && viewportBefore && reactFlowInstance) {
+      compensateViewportAfterLayout({
+        parentId: parentNodeId,
+        newNodeId: childNodeId,
+        nodesBeforeLayout: nodesRef.current,
+        nodesAfterLayout: nodesRef.current,
+        parentPosBefore,
+        viewportBefore,
+      });
+    }
+  }, [createNode, getConversationHistory, streamChatResponse, setNodes, nodesRef, edgesRef, reactFlowInstance, compensateViewportAfterLayout]);
 
   // Refs for callbacks to avoid stale closures
   const handleDeleteNodeRef = useRef<(nodeId: string) => void>(() => {});

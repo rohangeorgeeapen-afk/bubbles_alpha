@@ -190,9 +190,11 @@ export function useNodeManager({
    *
    * Used for fullscreen mode where nodes are created silently
    * as the user chats.
+   *
+   * @returns The ID of the newly created node
    */
   const createNodeInBackground = useCallback(
-    async ({ question, response, parentId }: CreateNodeInBackgroundParams) => {
+    async ({ question, response, parentId }: CreateNodeInBackgroundParams): Promise<string | undefined> => {
       try {
         const timestamp = new Date().toLocaleString();
         const nodeId = `conversation-${nodeIdCounter.current++}`;
@@ -212,7 +214,7 @@ export function useNodeManager({
         if (!parentNode) {
           console.error('❌ Parent node not found:', parentId);
           console.log('Available nodes:', currentNodes.map((n) => n.id));
-          return;
+          return undefined;
         }
 
         // Check if this node already exists (prevent duplicates)
@@ -224,7 +226,7 @@ export function useNodeManager({
         );
         if (existingNode) {
           console.warn('⚠️ Node already exists, skipping duplicate creation');
-          return;
+          return existingNode.id;
         }
 
         // Create conversation node
@@ -266,12 +268,14 @@ export function useNodeManager({
         setEdges(newEdges);
 
         console.log('✅ Node created in background:', nodeId);
+        return nodeId;
       } catch (error) {
         console.error('[Create Node Error]', {
           error: error instanceof Error ? error.message : 'Unknown error',
           stack: error instanceof Error ? error.stack : undefined,
           timestamp: new Date().toISOString(),
         });
+        return undefined;
       }
     },
     [setNodes, setEdges]
