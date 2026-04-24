@@ -1,60 +1,142 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --radius: 1rem;
+    --radius: 0.5rem;
+    --font-inter: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    
+    /* 
+     * SEMANTIC COLOR SYSTEM
+     * Each color has a PURPOSE and HIERARCHY
+     * 
+     * DEPTH LAYERS (darkest to lightest):
+     * - void: deepest background, the canvas itself
+     * - base: main app background
+     * - surface: elevated containers (sidebar, cards)
+     * - elevated: hover states, raised elements
+     * - overlay: modals, dropdowns
+     * 
+     * TEXT HIERARCHY:
+     * - primary: main content, headings
+     * - secondary: body text, descriptions
+     * - tertiary: labels, hints, timestamps
+     * - disabled: inactive elements
+     * 
+     * INTERACTIVE STATES:
+     * - action: primary buttons, main CTAs (muted teal)
+     * - subtle: secondary buttons, less important actions
+     * - ghost: tertiary actions, icon buttons
+     * 
+     * SEMANTIC MEANING:
+     * - success: confirmations, positive feedback (green)
+     * - warning: caution, attention needed (amber)
+     * - error: destructive, problems (red)
+     * - info: neutral information (blue)
+     */
+    
+    /* DEPTH LAYERS - Blue-black spectrum */
+    --void: 225 35% 3%;           /* #070a0f - deepest, canvas bg */
+    --base: 224 32% 6%;           /* #0d1117 - main app bg */
+    --surface: 223 28% 10%;       /* #151b24 - cards, sidebar */
+    --elevated: 222 25% 14%;      /* #1c2432 - hover, raised */
+    --overlay: 221 25% 18%;       /* #252f3f - modals, dropdowns */
+    
+    /* BORDERS - Subtle definition */
+    --border-subtle: 222 20% 16%;    /* barely visible separation */
+    --border-default: 220 18% 22%;   /* standard borders */
+    --border-strong: 218 16% 28%;    /* emphasized borders */
+    --border-focus: 195 70% 42%;     /* focus rings - muted teal */
+    
+    /* TEXT HIERARCHY - Warm grays for readability */
+    --text-primary: 210 25% 96%;     /* #f3f5f7 - headings, important */
+    --text-secondary: 215 18% 75%;   /* #b4bcc9 - body text */
+    --text-tertiary: 218 14% 55%;    /* #7d8694 - labels, hints */
+    --text-disabled: 220 12% 45%;    /* #6b7280 - inactive, still readable */
+    
+    /* ACTION COLORS - Muted cyan/teal for primary actions */
+    --action-primary: 195 70% 42%;       /* #21849e - muted teal */
+    --action-primary-hover: 195 75% 48%; /* slightly brighter on hover */
+    --action-primary-text: 210 25% 96%;  /* light text */
+    
+    /* SUBTLE ACTIONS - For secondary importance */
+    --action-subtle-bg: 222 25% 14%;
+    --action-subtle-hover: 220 22% 20%;
+    --action-subtle-text: 215 18% 75%;
+    
+    /* GHOST ACTIONS - Minimal visual weight */
+    --action-ghost-hover: 222 20% 12%;
+    --action-ghost-text: 218 14% 55%;
+    
+    /* SEMANTIC COLORS */
+    --success: 142 71% 45%;          /* #22c55e - green */
+    --success-muted: 142 40% 15%;    /* subtle green bg */
+    --warning: 38 92% 50%;           /* #f59e0b - amber */
+    --warning-muted: 38 50% 15%;     /* subtle amber bg */
+    --error: 0 72% 51%;              /* #ef4444 - red */
+    --error-muted: 0 40% 15%;        /* subtle red bg */
+    --info: 217 91% 60%;             /* #3b82f6 - blue */
+    --info-muted: 217 50% 15%;       /* subtle blue bg */
+    
+    /* SPECIAL - User content highlighting */
+    --user-question: 210 25% 96%;    /* questions stand out */
+    --ai-response: 215 20% 85%;      /* responses - visible but slightly muted */
+    
+    /* Legacy shadcn variables mapped to new system */
+    --background: var(--base);
+    --foreground: var(--text-primary);
+    --card: var(--surface);
+    --card-foreground: var(--text-primary);
+    --popover: var(--overlay);
+    --popover-foreground: var(--text-primary);
+    --primary: var(--action-primary);
+    --primary-foreground: var(--action-primary-text);
+    --secondary: var(--action-subtle-bg);
+    --secondary-foreground: var(--action-subtle-text);
+    --muted: var(--elevated);
+    --muted-foreground: var(--text-tertiary);
+    --accent: var(--action-primary);
+    --accent-foreground: var(--action-primary-text);
+    --destructive: var(--error);
+    --destructive-foreground: var(--text-primary);
+    --border: var(--border-default);
+    --input: var(--surface);
+    --ring: var(--border-focus);
   }
 }
 
-/* Sk-Modernist Font */
-@font-face {
-  font-family: 'Sk-Modernist';
-  src: url('https://db.onlinewebfonts.com/t/8e22783d707ad140bffe18b2a3812529.eot');
-  src: url('https://db.onlinewebfonts.com/t/8e22783d707ad140bffe18b2a3812529.eot?#iefix') format('embedded-opentype'),
-       url('https://db.onlinewebfonts.com/t/8e22783d707ad140bffe18b2a3812529.woff2') format('woff2'),
-       url('https://db.onlinewebfonts.com/t/8e22783d707ad140bffe18b2a3812529.woff') format('woff'),
-       url('https://db.onlinewebfonts.com/t/8e22783d707ad140bffe18b2a3812529.ttf') format('truetype'),
-       url('https://db.onlinewebfonts.com/t/8e22783d707ad140bffe18b2a3812529.svg#Sk-Modernist Regular') format('svg');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Sk-Modernist';
-  src: url('https://db.onlinewebfonts.com/t/60e8b4c88cb99c2e5ebdc5c3e8f8f828.eot');
-  src: url('https://db.onlinewebfonts.com/t/60e8b4c88cb99c2e5ebdc5c3e8f8f828.eot?#iefix') format('embedded-opentype'),
-       url('https://db.onlinewebfonts.com/t/60e8b4c88cb99c2e5ebdc5c3e8f8f828.woff2') format('woff2'),
-       url('https://db.onlinewebfonts.com/t/60e8b4c88cb99c2e5ebdc5c3e8f8f828.woff') format('woff'),
-       url('https://db.onlinewebfonts.com/t/60e8b4c88cb99c2e5ebdc5c3e8f8f828.ttf') format('truetype'),
-       url('https://db.onlinewebfonts.com/t/60e8b4c88cb99c2e5ebdc5c3e8f8f828.svg#Sk-Modernist Bold') format('svg');
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-
 html {
-  background-color: #1a1a1a;
+  background-color: hsl(var(--void));
   overscroll-behavior: none;
 }
 
 body {
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: var(--font-inter), 'Inter', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #1a1a1a;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  background-color: hsl(var(--base));
+  color: hsl(var(--text-secondary));
   overscroll-behavior: none;
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+  font-family: 'JetBrains Mono', source-code-pro, Menlo, Monaco, Consolas, monospace;
+}
+
+
+/* Subtle grid background - only on canvas area */
+.canvas-grid {
+  background-image: 
+    linear-gradient(hsl(var(--border-subtle)) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--border-subtle)) 1px, transparent 1px);
+  background-size: 40px 40px;
 }
 
 /* React Flow Styles */
@@ -67,44 +149,60 @@ code {
 }
 
 .react-flow__node.selectable:hover {
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 8px 32px hsla(var(--void), 0.5);
 }
 
 .react-flow__handle {
   opacity: 0;
 }
 
-/* Custom scrollbar for webkit browsers */
+/* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #2a2a2a;
+  background: hsl(var(--base));
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #4a4a4a;
-  border-radius: 4px;
+  background: hsl(var(--border-strong));
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #565656;
+  background: hsl(var(--text-tertiary));
 }
 
 /* Firefox scrollbar */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #4a4a4a #2a2a2a;
+  scrollbar-color: hsl(var(--border-strong)) hsl(var(--base));
 }
 
-/* Prevent text selection on canvas but allow on text content */
+/* Scrollbar hidden by default, visible on hover */
+.scrollbar-auto-hide::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+
+.scrollbar-auto-hide:hover::-webkit-scrollbar-thumb {
+  background: hsl(var(--border-strong));
+}
+
+.scrollbar-auto-hide {
+  scrollbar-color: transparent hsl(var(--base));
+}
+
+.scrollbar-auto-hide:hover {
+  scrollbar-color: hsl(var(--border-strong)) hsl(var(--base));
+}
+
+/* Text selection */
 .react-flow__pane {
   cursor: default;
 }
 
-/* Allow text selection in conversation nodes */
 .select-text {
   user-select: text;
   -webkit-user-select: text;
@@ -112,30 +210,28 @@ code {
   -ms-user-select: text;
 }
 
-/* Prevent dragging when interacting with text */
 .nodrag {
   pointer-events: all;
 }
 
-/* Cursor styles */
 .cursor-text {
   cursor: text;
 }
 
-/* React Flow Controls Styling */
+/* React Flow Controls */
 .react-flow__controls {
-  box-shadow: none !important;
-  border: 1px solid #4d4d4d !important;
-  background: rgba(42, 42, 42, 0.95) !important;
-  backdrop-filter: blur(8px) !important;
+  box-shadow: 0 4px 16px hsla(var(--void), 0.4) !important;
+  border: 1px solid hsl(var(--border-default)) !important;
+  background: hsl(var(--surface)) !important;
+  border-radius: 8px !important;
 }
 
 .react-flow__controls-button {
   background: transparent !important;
   border: none !important;
-  border-bottom: 1px solid #4d4d4d !important;
-  color: #b4b4b4 !important;
-  transition: all 0.2s ease !important;
+  border-bottom: 1px solid hsl(var(--border-subtle)) !important;
+  color: hsl(var(--text-tertiary)) !important;
+  transition: all 0.15s ease !important;
 }
 
 .react-flow__controls-button:last-child {
@@ -143,54 +239,54 @@ code {
 }
 
 .react-flow__controls-button:hover {
-  background: rgba(255, 255, 255, 0.05) !important;
-  color: #ececec !important;
+  background: hsl(var(--elevated)) !important;
+  color: hsl(var(--text-primary)) !important;
 }
 
 .react-flow__controls-button svg {
-  fill: #b4b4b4 !important;
-  transition: fill 0.2s ease !important;
+  fill: hsl(var(--text-tertiary)) !important;
+  transition: fill 0.15s ease !important;
 }
 
 .react-flow__controls-button:hover svg {
-  fill: #00D5FF !important;
+  fill: hsl(var(--text-primary)) !important;
 }
 
-/* React Flow MiniMap Styling */
+/* React Flow MiniMap */
 .react-flow__minimap {
-  background: rgba(42, 42, 42, 0.95) !important;
-  border: 1px solid #4d4d4d !important;
-  backdrop-filter: blur(8px) !important;
+  background: hsl(var(--surface)) !important;
+  border: 1px solid hsl(var(--border-default)) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 16px hsla(var(--void), 0.4) !important;
 }
 
 .react-flow__minimap-mask {
-  fill: rgba(255, 255, 255, 0.05) !important;
+  fill: rgba(13, 17, 23, 0.6) !important;
 }
 
 .react-flow__minimap-node {
-  fill: #565656 !important;
-  stroke: #4d4d4d !important;
+  fill: hsl(215, 20%, 65%) !important;
+  stroke: hsl(215, 15%, 45%) !important;
+  stroke-width: 1px !important;
 }
 
-/* Smooth transitions for mobile interactions */
+/* Mobile */
 @media (max-width: 768px) {
   .react-flow__pane {
     touch-action: pan-x pan-y;
   }
   
-  /* Larger touch targets for mobile */
   .react-flow__controls-button {
     min-width: 44px !important;
     min-height: 44px !important;
   }
   
-  /* Prevent double-tap zoom on mobile */
   * {
     touch-action: manipulation;
   }
 }
 
-/* Smooth scrolling for better UX */
+/* Smooth scrolling */
 html {
   scroll-behavior: smooth;
 }
@@ -207,40 +303,198 @@ html {
   }
 }
 
-/* Better focus styles for accessibility and mobile */
+/* Focus styles - muted red for focus */
 *:focus-visible {
-  outline: 2px solid #00D5FF;
+  outline: 2px solid hsl(var(--border-focus));
   outline-offset: 2px;
 }
 
-/* Improve tap targets on mobile */
-@media (max-width: 768px) {
-  button, a, input, textarea, select {
-    min-height: 44px;
-    min-width: 44px;
-  }
-}
-
-/* Prevent layout shift during font loading */
-.font-loading {
-  visibility: hidden;
-}
-
-.font-loaded {
-  visibility: visible;
-}
-
-/* Hardware acceleration for smooth animations */
+/* Hardware acceleration */
 .react-flow__node,
 .react-flow__edge {
   will-change: transform;
   transform: translateZ(0);
 }
 
-/* Optimize rendering for mobile */
 @media (max-width: 768px) {
   .react-flow__renderer {
     transform: translateZ(0);
     -webkit-transform: translateZ(0);
   }
+}
+
+/* Animations */
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s ease-in-out infinite;
+}
+
+/* Thinking indicator animations */
+@keyframes thinking-bounce {
+  0%, 80%, 100% {
+    transform: scale(0.6);
+    opacity: 0.4;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes thinking-fade {
+  0%, 100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Professional Button Styles */
+@layer components {
+  /* Primary button - ghost style with animated border on hover */
+  .btn-primary {
+    @apply relative overflow-hidden;
+    @apply bg-transparent text-text-secondary;
+    @apply font-medium rounded-lg;
+    @apply border border-border-default;
+    @apply transition-all duration-300 ease-out;
+    @apply active:scale-[0.98];
+    @apply disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100;
+  }
+  
+  .btn-primary:hover {
+    @apply text-action-primary-text;
+    @apply border-action-primary;
+    @apply bg-action-primary/10;
+    box-shadow: 0 0 15px 0 rgba(33, 132, 158, 0.25), inset 0 0 20px 0 rgba(33, 132, 158, 0.05);
+  }
+  
+  /* Animated border glow effect */
+  .btn-primary::before {
+    content: '';
+    @apply absolute inset-0 rounded-lg opacity-0;
+    @apply transition-opacity duration-300;
+    box-shadow: inset 0 0 0 1px hsl(195 70% 42%);
+  }
+  
+  .btn-primary:hover::before {
+    @apply opacity-100;
+  }
+  
+  /* Secondary button - outlined/ghost */
+  .btn-secondary {
+    @apply relative overflow-hidden;
+    @apply bg-transparent text-text-secondary;
+    @apply border border-border-default;
+    @apply font-medium rounded-lg;
+    @apply transition-all duration-200 ease-out;
+    @apply hover:bg-elevated hover:text-text-primary hover:border-border-strong;
+    @apply active:scale-[0.98];
+  }
+  
+  /* Ghost button - minimal */
+  .btn-ghost {
+    @apply bg-transparent text-text-tertiary;
+    @apply rounded-lg;
+    @apply transition-all duration-150 ease-out;
+    @apply hover:bg-action-ghost-hover hover:text-text-secondary;
+    @apply active:scale-[0.96];
+  }
+  
+  /* Icon button */
+  .btn-icon {
+    @apply p-2 rounded-lg;
+    @apply bg-transparent text-text-tertiary;
+    @apply transition-all duration-150 ease-out;
+    @apply hover:bg-elevated hover:text-text-secondary;
+    @apply active:scale-[0.92];
+  }
+  
+  /* Danger button */
+  .btn-danger {
+    @apply bg-error text-white;
+    @apply font-medium rounded-lg;
+    @apply transition-all duration-200 ease-out;
+    @apply hover:bg-error/90;
+    @apply active:scale-[0.98];
+  }
+}
+
+/* Smooth transitions for interactive elements */
+button, a, input, textarea, select {
+  @apply transition-colors duration-150;
+}
+
+/* Card hover effect */
+.card-hover {
+  @apply transition-all duration-200 ease-out;
+  @apply hover:shadow-depth-md hover:-translate-y-0.5;
+}
+
+/* Fade in animation */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out forwards;
+}
+
+/* Scale in animation */
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.animate-scale-in {
+  animation: scale-in 0.15s ease-out forwards;
+}
+
+/* Slide in from left */
+@keyframes slide-in-left {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.animate-slide-in-left {
+  animation: slide-in-left 0.2s ease-out forwards;
+}
+
+/* Slide up */
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.15s ease-out forwards;
+}
+
+/* Input focus glow - disabled for custom inputs */
+/* input:focus, textarea:focus {
+  @apply ring-1 ring-border-focus/30;
+} */
+
+
+/* KaTeX math styling */
+.katex {
+  font-size: 1.05em;
+  color: hsl(var(--text-primary));
+}
+
+.katex-display {
+  margin: 1rem 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.5rem 0;
+}
+
+.katex-display > .katex {
+  text-align: left;
 }

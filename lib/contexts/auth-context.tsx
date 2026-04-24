@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '../supabase-client';
+import { isSupabaseConfigured, supabase } from '../supabase-client';
 
 interface AuthContextType {
   user: User | null;
@@ -22,26 +22,78 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    if (!isSupabaseConfigured) {
       setLoading(false);
-    });
+      return;
+    }
+
+    let isMounted = true;
+    
+    // Set a timeout to ensure loading is set to false even if something fails
+    const timeoutId = setTimeout(() => {
+      if (isMounted) {
+        setLoading(false);
+      }
+    }, 3000); // 3 second timeout
+    
+    // Get initial session with error handling
+    supabase.auth.getSession()
+      .then(({ data: { session }, error }) => {
+        if (!isMounted) return;
+        clearTimeout(timeoutId);
+        if (error) {
+          console.error('Error getting session:', error);
+        }
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+      })
+      .catch((error) => {
+        if (!isMounted) return;
+        clearTimeout(timeoutId);
+        console.error('Failed to get session:', error);
+        setLoading(false);
+      });
 
     // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    let subscription: any = null;
+    try {
+      const result = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (!isMounted) return;
+        
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
 
-    return () => subscription.unsubscribe();
+        // Handle OAuth callback - refresh the page to ensure proper state sync
+        if (event === 'SIGNED_IN' && window.location.pathname === '/auth/callback') {
+          window.location.href = '/';
+        }
+      });
+      subscription = result.data.subscription;
+    } catch (error) {
+      console.error('Failed to set up auth listener:', error);
+      setLoading(false);
+    }
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+      if (subscription) {
+        try {
+          subscription.unsubscribe();
+        } catch (error) {
+          console.error('Error unsubscribing:', error);
+        }
+      }
+    };
   }, []);
 
   const signUp = async (email: string, password: string) => {
+    if (!isSupabaseConfigured) {
+      return { error: new Error('Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.') };
+    }
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -53,6 +105,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
+    if (!isSupabaseConfigured) {
+      return { error: new Error('Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.') };
+    }
+
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -61,17 +117,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signInWithGoogle = async () => {
+    if (!isSupabaseConfigured) {
+      throw new Error('Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.');
+    }
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
+        skipBrowserRedirect: false,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        },
       },
     });
     if (error) throw error;
   };
 
   const signOut = async () => {
-    console.log('Signing out...');
     try {
       // Clear local state first
       setUser(null);
@@ -93,8 +157,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         });
       }
-      
-      console.log('Signed out successfully');
     } catch (error: any) {
       // Ignore session missing errors - they mean we're already signed out
       if (!error?.message?.includes('session') && !error?.message?.includes('Auth session missing')) {

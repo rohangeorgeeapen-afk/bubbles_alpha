@@ -52,7 +52,7 @@ export class LayoutOrchestrator {
         const result = this.layout(nodes, edges);
         this.pendingLayout = null;
         resolve(result);
-      }, 50);
+      }, 55);
     });
   }
 
