@@ -12,6 +12,11 @@
   </p>
 
   <p>
+    <a href="https://bubbles-alpha-kappa.vercel.app/"><strong>Open the live app</strong></a>
+  </p>
+
+  <p>
+    <a href="https://bubbles-alpha-kappa.vercel.app/"><img alt="Live app" src="https://img.shields.io/badge/Live%20App-bubbles--alpha--kappa.vercel.app-00D5FF?style=flat-square" /></a>
     <img alt="Next.js" src="https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js" />
     <img alt="React" src="https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black" />
     <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white" />
@@ -21,7 +26,7 @@
 
 ## Overview
 
-Bubbles is built for exploratory thinking. Instead of forcing every follow-up into one long linear chat, it turns conversations into a navigable canvas where each question can become its own branch.
+[Bubbles](https://bubbles-alpha-kappa.vercel.app/) is a hosted web app for exploratory thinking. Instead of forcing every follow-up into one long linear chat, it turns conversations into a navigable canvas where each question can become its own branch.
 
 Use it to learn a new topic, chase side questions, return to earlier threads, and keep the full shape of your reasoning visible.
 
@@ -47,7 +52,15 @@ Use it to learn a new topic, chase side questions, return to earlier threads, an
 - **AI providers:** Gemini 2.5 Flash, with optional Perplexity fallback
 - **Testing:** Jest and Testing Library
 
-## Getting Started
+## Try Bubbles
+
+The easiest way to use Bubbles is the hosted app:
+
+**[https://bubbles-alpha-kappa.vercel.app/](https://bubbles-alpha-kappa.vercel.app/)**
+
+This repository contains the source code for the app. Running it locally is mainly useful if you want to inspect the implementation, contribute changes, or deploy your own instance with your own Supabase and AI provider keys.
+
+## Local Development
 
 ### 1. Install dependencies
 
