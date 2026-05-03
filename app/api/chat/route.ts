@@ -201,22 +201,23 @@ export async function POST(request: NextRequest) {
     // NVIDIA Integrate (dev testing) — OpenAI-compatible, takes priority when set.
     if (nvidiaApiKey) {
       const baseUrl = process.env.NVIDIA_API_BASE_URL || 'https://integrate.api.nvidia.com/v1';
-      const model = process.env.NVIDIA_MODEL || 'z-ai/glm4.7';
+      const model = process.env.NVIDIA_MODEL || 'google/gemma-4-31b-it';
 
       const nvidiaResponse = await fetch(`${baseUrl}/chat/completions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': stream ? 'text/event-stream' : 'application/json',
           Authorization: `Bearer ${nvidiaApiKey}`,
         },
         body: JSON.stringify({
           model,
           messages: messagesWithSystem,
           temperature: 1,
-          top_p: 1,
+          top_p: 0.95,
           max_tokens: 16384,
           stream: Boolean(stream),
-          chat_template_kwargs: { enable_thinking: true, clear_thinking: false },
+          chat_template_kwargs: { enable_thinking: false },
         }),
       });
 
