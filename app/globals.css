@@ -113,6 +113,85 @@ html {
   overscroll-behavior: none;
 }
 
+/*
+ * TERMINAL THEME — applied via `.theme-terminal` on the app root so the
+ * landing page keeps the original palette. Warm-dark Ghostty/Warp-ish
+ * palette with phosphor green accent. Designed to be readable in monospace.
+ */
+.theme-terminal {
+  --void: 30 10% 4%;
+  --base: 30 10% 6%;
+  --surface: 28 10% 9%;
+  --elevated: 28 9% 13%;
+  --overlay: 28 8% 17%;
+
+  --border-subtle: 28 8% 16%;
+  --border-default: 28 10% 24%;
+  --border-strong: 28 12% 34%;
+  --border-focus: 132 35% 58%;
+
+  --text-primary: 36 28% 90%;
+  --text-secondary: 32 16% 72%;
+  --text-tertiary: 30 10% 50%;
+  --text-disabled: 28 8% 36%;
+
+  --action-primary: 132 35% 58%;
+  --action-primary-hover: 132 40% 64%;
+  --action-primary-text: 30 10% 6%;
+
+  --action-subtle-bg: 28 9% 13%;
+  --action-subtle-hover: 28 10% 18%;
+  --action-subtle-text: 32 16% 72%;
+
+  --action-ghost-hover: 28 9% 11%;
+  --action-ghost-text: 30 10% 50%;
+
+  --success: 132 35% 58%;
+  --success-muted: 132 25% 14%;
+  --warning: 35 70% 60%;
+  --warning-muted: 35 40% 14%;
+  --error: 5 65% 60%;
+  --error-muted: 5 40% 14%;
+  --info: 200 50% 62%;
+  --info-muted: 200 30% 14%;
+
+  --user-question: 36 28% 90%;
+  --ai-response: 32 16% 78%;
+
+  background-color: hsl(var(--base));
+  color: hsl(var(--text-secondary));
+  font-family: 'JetBrains Mono', Menlo, Monaco, Consolas, monospace;
+  font-feature-settings: normal;
+  letter-spacing: 0;
+}
+
+.theme-terminal *,
+.theme-terminal *::before,
+.theme-terminal *::after {
+  border-radius: 0 !important;
+}
+
+/* Strip rounded corners from React Flow internals inside the terminal theme */
+.theme-terminal .react-flow__controls,
+.theme-terminal .react-flow__minimap {
+  border-radius: 0 !important;
+}
+
+/* Edges: thin straight phosphor lines, no fancy curves */
+.theme-terminal .react-flow__edge-path {
+  stroke: hsl(var(--border-strong));
+  stroke-width: 1px;
+}
+.theme-terminal .react-flow__edge.selected .react-flow__edge-path,
+.theme-terminal .react-flow__edge:focus .react-flow__edge-path {
+  stroke: hsl(var(--action-primary));
+}
+
+/* No grid background — terminal canvas is flat warm-dark */
+.theme-terminal .canvas-grid {
+  background-image: none;
+}
+
 body {
   margin: 0;
   padding: 0;

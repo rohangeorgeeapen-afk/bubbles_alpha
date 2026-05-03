@@ -1,6 +1,16 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
+
+function TerminalDots() {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setN(v => (v + 1) % 4), 400);
+    return () => clearInterval(t);
+  }, []);
+  return <span className="text-text-tertiary w-[3ch] inline-block">{'.'.repeat(n)}</span>;
+}
+
 import ConversationCanvas from './ConversationCanvas';
 import { CanvasErrorBoundary } from './CanvasErrorBoundary';
 import Sidebar from '@/components/layout/Sidebar';
@@ -76,8 +86,12 @@ export default function CanvasManager() {
   // Loading state
   if (authLoading || loading) {
     return (
-      <div className="flex h-screen bg-app-base items-center justify-center">
-        <div className="w-12 h-12 border-4 border-border-default border-t-action-primary rounded-full animate-spin"></div>
+      <div className="theme-terminal font-mono flex h-screen bg-base items-center justify-center text-text-secondary text-[13px]">
+        <div className="flex items-center gap-[1ch]">
+          <span className="text-action-primary animate-pulse">▶</span>
+          <span>booting bubbles</span>
+          <TerminalDots />
+        </div>
       </div>
     );
   }
@@ -97,7 +111,7 @@ export default function CanvasManager() {
 
   // Main app for authenticated users
   return (
-    <div className="flex h-screen bg-app-base overflow-hidden">
+    <div className="theme-terminal font-mono flex h-screen bg-app-base overflow-hidden">
       <Sidebar
         canvases={canvasSummaries}
         currentCanvasId={currentCanvasId}

@@ -1,11 +1,10 @@
 "use client";
 
 import React, { useState } from 'react';
-import Image from 'next/image';
-import { Plus, Trash2, PanelLeftClose, PanelLeft, User, LogOut, Pencil, Check, X, Search, AlertTriangle } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { AsciiBox } from '@/components/ui/ascii-box';
 
 interface Canvas {
   id: string;
@@ -103,85 +102,75 @@ export default function Sidebar({
         {/* Header */}
         <div className="p-4 flex-shrink-0">
           <div className="flex items-center justify-between mb-4 gap-2">
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div 
-                className="relative w-8 h-8 cursor-pointer group transition-all duration-500 flex-shrink-0"
-                style={{
-                  filter: logoHovered ? 'drop-shadow(0 12px 40px rgba(0, 213, 255, 0.5))' : 'drop-shadow(0 0 0 transparent)',
-                  transition: 'filter 0.5s ease'
-                }}
-                onMouseEnter={() => setLogoHovered(true)}
-                onMouseLeave={() => setLogoHovered(false)}
-                onClick={(e) => {
-                  const img = e.currentTarget.querySelector('img');
-                  if (img) {
-                    const currentRotation = parseInt(img.style.rotate || '0');
-                    img.style.rotate = `${currentRotation + 360}deg`;
-                  }
-                }}
+            <div
+              className="flex items-center gap-[1ch] flex-1 min-w-0 cursor-pointer group"
+              onMouseEnter={() => setLogoHovered(true)}
+              onMouseLeave={() => setLogoHovered(false)}
+            >
+              {/* Mini ASCII logo: 7-circle hex with all 6 outer circles
+                  connected to the center via diagonals + horizontals. */}
+              <pre
+                className={`text-[9px] leading-[1] font-mono whitespace-pre flex-shrink-0 transition-colors ${
+                  logoHovered ? 'text-action-primary-hover' : 'text-action-primary'
+                }`}
+                aria-hidden
               >
-                <Image
-                  src="/logo.png" 
-                  alt="Bubbles Logo" 
-                  width={32}
-                  height={32}
-                  className="w-full h-full object-contain animate-bubble-pop transition-all duration-500 ease-out"
-                  style={{ 
-                    background: 'transparent',
-                    transition: 'transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), rotate 1s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-                    transform: logoHovered ? 'scale(1.4)' : 'scale(1)'
-                  }}
-                />
-              </div>
-              <div className="flex items-center gap-1.5 min-w-0">
-                <h1 
-                  className="text-xl font-bold tracking-tight" 
-                  style={{ 
-                    fontFamily: '"Montserrat", sans-serif', 
-                    fontWeight: 700, 
-                    backgroundImage: 'linear-gradient(to bottom, #ffffff 30%, #e0f2fe 70%)',
-                    backgroundClip: 'text',
-                    WebkitBackgroundClip: 'text',
-                    color: 'transparent',
-                    WebkitTextFillColor: 'transparent'
-                  }}
-                >
+{String.raw`o   o
+ \ /
+o-O-o
+ / \
+o   o`}
+              </pre>
+              <div className="flex items-baseline gap-[1ch] min-w-0">
+                <h1 className="text-[15px] font-mono font-bold tracking-tight text-text-primary">
                   bubbles
                 </h1>
-                <span className="text-[9px] font-semibold px-1.5 py-0.5 bg-[#00D5FF]/20 text-[#00D5FF] rounded border border-[#00D5FF]/30 flex-shrink-0">
-                  BETA
+                <span className="text-[10px] font-mono text-action-primary flex-shrink-0">
+                  [beta]
                 </span>
               </div>
             </div>
-            {/* Ghost button - minimal visual weight */}
-            <button onClick={onToggle} className="btn-icon flex-shrink-0" aria-label="Close sidebar">
-              <PanelLeftClose className="w-5 h-5" />
+            <button
+              onClick={onToggle}
+              className="text-text-tertiary hover:text-text-primary flex-shrink-0 px-[1ch]"
+              aria-label="Close sidebar"
+            >
+              [&lt;]
             </button>
           </div>
           
           {isSearching ? (
-            <div className="flex gap-2 items-center">
+            <div className="flex gap-2 items-center min-w-0">
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search canvases..."
-                className="flex-1 h-10 bg-surface border-border-default text-text-primary placeholder:text-text-disabled focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-border-focus"
+                placeholder="search…"
+                className="flex-1 min-w-0 h-9 bg-surface border-border-default text-text-primary placeholder:text-text-disabled focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-border-focus text-[13px] font-mono"
                 autoFocus
               />
-              <button onClick={handleToggleSearch} className="btn-secondary h-10 w-10 flex items-center justify-center" title="Close search">
-                <X className="w-4 h-4" strokeWidth={2} />
+              <button
+                onClick={handleToggleSearch}
+                className="flex-shrink-0 h-9 px-[2ch] flex items-center justify-center text-text-tertiary hover:text-text-primary border border-border-default hover:border-border-strong text-[12px]"
+                title="Close search"
+              >
+                close
               </button>
             </div>
           ) : (
-            <div className="flex gap-2">
-              {/* Primary action button */}
-              <button onClick={handleNewCanvasClick} className="btn-primary flex-1 h-10 text-sm relative flex items-center justify-center touch-manipulation">
-                <Plus className="w-4 h-4 absolute left-3" strokeWidth={2.5} />
-                <span>New canvas</span>
+            <div className="flex flex-col gap-[0.5lh]">
+              <button
+                onClick={handleNewCanvasClick}
+                className="w-full h-10 flex items-center justify-center gap-[1ch] bg-action-primary text-action-primary-text hover:bg-action-primary-hover transition-colors font-bold tracking-wider text-[13px] active:scale-[0.99]"
+              >
+                <span className="text-[15px]">+</span>
+                <span>NEW CANVAS</span>
               </button>
-              {/* Secondary action - subtle styling */}
-              <button onClick={handleToggleSearch} className="btn-secondary h-10 w-10 flex items-center justify-center touch-manipulation" title="Search">
-                <Search className="w-4 h-4" strokeWidth={2} />
+              <button
+                onClick={handleToggleSearch}
+                className="w-full h-8 px-[2ch] flex items-center justify-center gap-[1ch] text-text-tertiary hover:text-text-primary border border-border-default hover:border-border-strong text-[12px]"
+                title="Search canvases"
+              >
+                <span>[search]</span>
               </button>
             </div>
           )}
@@ -207,7 +196,7 @@ export default function Sidebar({
                   }`}
                 >
                   {editingId === canvas.id ? (
-                    <div className="px-3 py-2 pr-20">
+                    <div className="px-3 py-2 flex flex-col gap-[0.5lh]">
                       <Input
                         value={editingName}
                         onChange={(e) => setEditingName(e.target.value)}
@@ -215,16 +204,16 @@ export default function Sidebar({
                           if (e.key === 'Enter') handleSaveEdit(canvas.id);
                           else if (e.key === 'Escape') handleCancelEdit();
                         }}
-                        className="h-7 text-sm bg-surface border-border-default text-text-primary focus-visible:ring-0"
+                        className="h-7 text-[13px] font-mono bg-surface border-border-default text-text-primary focus-visible:ring-0"
                         autoFocus
                         onClick={(e) => e.stopPropagation()}
                       />
-                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
-                        <button onClick={() => handleSaveEdit(canvas.id)} className="p-1.5 rounded hover:bg-elevated transition-colors" title="Save">
-                          <Check className="w-4 h-4 text-success" strokeWidth={2} />
+                      <div className="flex justify-end gap-[2ch] text-[12px]">
+                        <button onClick={() => handleSaveEdit(canvas.id)} className="text-action-primary hover:text-action-primary-hover" title="Save">
+                          [save]
                         </button>
-                        <button onClick={handleCancelEdit} className="p-1.5 rounded hover:bg-elevated transition-colors" title="Cancel">
-                          <X className="w-4 h-4 text-text-tertiary" strokeWidth={2} />
+                        <button onClick={handleCancelEdit} className="text-text-tertiary hover:text-text-primary" title="Cancel">
+                          [cancel]
                         </button>
                       </div>
                     </div>
@@ -234,12 +223,12 @@ export default function Sidebar({
                         <div className="text-sm text-text-primary truncate">{canvas.name.length > 18 ? canvas.name.substring(0, 18) + '...' : canvas.name}</div>
                         <div className="text-xs text-text-disabled mt-0.5">{canvas.nodeCount} nodes</div>
                       </button>
-                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={(e) => handleStartEdit(canvas, e)} className="p-1.5 rounded hover:bg-elevated transition-colors" title="Rename">
-                          <Pencil className="w-3.5 h-3.5 text-text-disabled hover:text-text-secondary" strokeWidth={2} />
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-[1ch] text-[12px] opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={(e) => handleStartEdit(canvas, e)} className="text-text-disabled hover:text-text-secondary" title="Rename">
+                          [rename]
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); setCanvasToDelete(canvas); setDeleteDialogOpen(true); }} className="p-1.5 rounded hover:bg-error-muted transition-colors" title="Delete">
-                          <Trash2 className="w-3.5 h-3.5 text-text-disabled hover:text-error" strokeWidth={2} />
+                        <button onClick={(e) => { e.stopPropagation(); setCanvasToDelete(canvas); setDeleteDialogOpen(true); }} className="text-text-disabled hover:text-error" title="Delete">
+                          [delete]
                         </button>
                       </div>
                     </>
@@ -254,14 +243,18 @@ export default function Sidebar({
         <div className="p-3 border-t border-border-subtle flex-shrink-0 space-y-2">
           <div className="text-xs text-text-disabled font-mono">{canvases.length} {canvases.length === 1 ? 'canvas' : 'canvases'}</div>
           {userEmail && (
-            <div className="flex items-center justify-between gap-2 bg-elevated/50 rounded-md px-3 py-2 border border-border-default">
-              <div className="flex items-center gap-2 min-w-0 flex-1">
-                <User className="w-4 h-4 text-text-tertiary flex-shrink-0" strokeWidth={2} />
-                <span className="text-xs text-text-secondary truncate">{userEmail}</span>
+            <div className="flex items-center justify-between gap-[1ch] px-[1ch] py-[0.25lh] border border-border-default text-[12px]">
+              <div className="flex items-baseline gap-[1ch] min-w-0 flex-1">
+                <span className="text-text-tertiary flex-shrink-0">@</span>
+                <span className="text-text-secondary truncate">{userEmail}</span>
               </div>
               {onSignOut && (
-                <button onClick={() => setSignOutDialogOpen(true)} className="p-1.5 hover:bg-surface rounded transition-colors flex-shrink-0" title="Sign out">
-                  <LogOut className="w-4 h-4 text-text-tertiary hover:text-text-primary" strokeWidth={2} />
+                <button
+                  onClick={() => setSignOutDialogOpen(true)}
+                  className="text-text-tertiary hover:text-text-primary flex-shrink-0"
+                  title="Sign out"
+                >
+                  [exit]
                 </button>
               )}
             </div>
@@ -271,56 +264,67 @@ export default function Sidebar({
 
       {/* Toggle button when closed */}
       {!isOpen && (
-        <button onClick={onToggle} className="fixed top-3 left-3 z-[60] btn-secondary p-2.5 shadow-depth-md animate-fade-in" aria-label="Open sidebar">
-          <PanelLeft className="w-5 h-5" />
+        <button
+          onClick={onToggle}
+          className="theme-terminal font-mono fixed top-3 left-3 z-[60] px-[2ch] py-[0.25lh] text-text-secondary hover:text-text-primary border border-border-default hover:border-border-strong bg-base text-[13px]"
+          aria-label="Open sidebar"
+        >
+          [&gt;]
         </button>
       )}
 
       {/* Delete Dialog - uses error semantic color */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent className="bg-surface border border-border-default text-text-primary max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-text-primary">
-              <AlertTriangle className="w-5 h-5 text-error" />
-              Delete Canvas
-            </DialogTitle>
-            <DialogDescription className="text-text-secondary pt-2">
-              Are you sure you want to delete <span className="text-text-primary font-medium">&quot;{canvasToDelete?.name}&quot;</span>?
-              <br />
-              <span className="text-text-tertiary text-sm">This action cannot be undone.</span>
+        <DialogContent className="theme-terminal font-mono bg-base text-text-primary max-w-md p-0 border-0 shadow-none [&>button:last-child]:hidden">
+          <AsciiBox title="confirm · delete canvas" variant="strong" className="text-[13px]" contentClassName="px-[2ch] py-[1lh] flex flex-col gap-[1lh]">
+            <DialogTitle className="sr-only">Delete Canvas</DialogTitle>
+            <DialogDescription className="sr-only">
+              Are you sure you want to delete &quot;{canvasToDelete?.name}&quot;? This action cannot be undone.
             </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2">
-            <button onClick={() => { setDeleteDialogOpen(false); setCanvasToDelete(null); }} className="btn-secondary px-4 py-2 text-sm">
-              Cancel
-            </button>
-            <button onClick={() => { if (canvasToDelete) { setDeletingCanvasId(canvasToDelete.id); setDeleteDialogOpen(false); setTimeout(() => { onDeleteCanvas(canvasToDelete.id); setDeletingCanvasId(null); setCanvasToDelete(null); }, 300); }}} className="btn-danger px-4 py-2 text-sm">
-              Delete
-            </button>
-          </DialogFooter>
+            <div className="text-text-secondary">
+              <div>delete <span className="text-text-primary">&ldquo;{canvasToDelete?.name}&rdquo;</span> ?</div>
+              <div className="text-text-tertiary mt-[0.5lh]">! this action cannot be undone</div>
+            </div>
+            <div className="flex justify-end gap-[2ch]">
+              <button
+                onClick={() => { setDeleteDialogOpen(false); setCanvasToDelete(null); }}
+                className="text-text-tertiary hover:text-text-secondary"
+              >
+                [ cancel ]
+              </button>
+              <button
+                onClick={() => { if (canvasToDelete) { setDeletingCanvasId(canvasToDelete.id); setDeleteDialogOpen(false); setTimeout(() => { onDeleteCanvas(canvasToDelete.id); setDeletingCanvasId(null); setCanvasToDelete(null); }, 300); } }}
+                className="text-error hover:text-error/80"
+              >
+                [ delete ]
+              </button>
+            </div>
+          </AsciiBox>
         </DialogContent>
       </Dialog>
 
       {/* Sign Out Dialog */}
       <Dialog open={signOutDialogOpen} onOpenChange={setSignOutDialogOpen}>
-        <DialogContent className="bg-surface border border-border-default text-text-primary max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-text-primary">
-              <LogOut className="w-5 h-5 text-warning" />
-              Sign Out
-            </DialogTitle>
-            <DialogDescription className="text-text-secondary pt-2">
-              Are you sure you want to sign out?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2">
-            <button onClick={() => setSignOutDialogOpen(false)} className="btn-secondary px-4 py-2 text-sm">
-              Cancel
-            </button>
-            <button onClick={() => { setSignOutDialogOpen(false); onSignOut?.(); }} className="px-4 py-2 text-sm font-medium rounded-lg bg-warning text-void hover:bg-warning/90 transition-colors">
-              Sign Out
-            </button>
-          </DialogFooter>
+        <DialogContent className="theme-terminal font-mono bg-base text-text-primary max-w-md p-0 border-0 shadow-none [&>button:last-child]:hidden">
+          <AsciiBox title="confirm · sign out" variant="strong" className="text-[13px]" contentClassName="px-[2ch] py-[1lh] flex flex-col gap-[1lh]">
+            <DialogTitle className="sr-only">Sign Out</DialogTitle>
+            <DialogDescription className="sr-only">Are you sure you want to sign out?</DialogDescription>
+            <div className="text-text-secondary">sign out of this session?</div>
+            <div className="flex justify-end gap-[2ch]">
+              <button
+                onClick={() => setSignOutDialogOpen(false)}
+                className="text-text-tertiary hover:text-text-secondary"
+              >
+                [ cancel ]
+              </button>
+              <button
+                onClick={() => { setSignOutDialogOpen(false); onSignOut?.(); }}
+                className="text-warning hover:text-warning/80"
+              >
+                [ sign out ]
+              </button>
+            </div>
+          </AsciiBox>
         </DialogContent>
       </Dialog>
     </>

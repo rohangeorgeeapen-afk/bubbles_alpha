@@ -1489,6 +1489,7 @@ function ConversationCanvasInner({
           proOptions={{ hideAttribution: true }}
           defaultEdgeOptions={{
             animated: false,
+            type: 'step',
           }}
         >
         <Background variant={BackgroundVariant.Dots} color="rgba(14, 165, 233, 0.03)" gap={40} size={1} />

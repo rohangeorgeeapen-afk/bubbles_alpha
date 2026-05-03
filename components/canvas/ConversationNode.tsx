@@ -2,10 +2,8 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { AsciiBox } from '@/components/ui/ascii-box';
 
-import { ArrowUp, Maximize2, X, Copy, Check, GitBranch } from 'lucide-react';
 import MarkdownContent from '@/components/shared/MarkdownContent';
 import { useTextSelection, DisambiguationMenu } from './selection';
 import HighlightedText from './selection/HighlightedText';
@@ -136,247 +134,210 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
     ? (activeSelection.text.length > 60 ? activeSelection.text.slice(0, 60) + '...' : activeSelection.text)
     : null;
 
+  // Title shows meta info (node number + short time), not the question itself —
+  // the body already renders the question as the headline.
+  const idMatch = String(id).match(/(\d+)$/);
+  const nodeNum = idMatch ? idMatch[1] : id;
+  const shortTime = (() => {
+    const ts = data.timestamp;
+    if (!ts) return '';
+    const d = new Date(ts);
+    if (isNaN(d.getTime())) return '';
+    return d.toTimeString().slice(0, 5); // HH:MM (24h)
+  })();
+  const titleLabel = shortTime ? `Q · #${nodeNum} · ${shortTime}` : `Q · #${nodeNum}`;
+
   return (
     <>
-      <Handle type="target" position={Position.Top} className="w-3 h-3 !bg-border-strong rounded-full" />
-      
-      <Card 
+      <Handle type="target" position={Position.Top} className="w-3 h-3 !bg-border-strong" />
+
+      <div
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onTouchStart={() => setIsHovered(true)}
-        className={`relative w-[450px] h-[468px] bg-surface border border-border-default rounded-lg shadow-depth-lg overflow-hidden flex flex-col nowheel select-none`}
+        className="relative w-[450px] h-[468px] bg-base nowheel select-none flex flex-col"
         role="article"
         aria-label="Conversation node"
       >
-        {/* Header */}
-        <div className="h-8 bg-void border-b border-border-subtle flex items-center px-3 flex-shrink-0 justify-between relative">
-          {data.onDelete && (
-            <>
-              {isMac ? (
-                <div className="flex gap-2 nodrag nopan">
-                  <button
-                    onClick={() => data.onDelete?.(id)}
-                    className={`w-3 h-3 rounded-full transition-colors group relative ${isHovered ? 'bg-error hover:bg-error/80' : 'bg-border-strong'}`}
-                    aria-label="Delete node"
-                  >
-                    {isHovered && (
-                      <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <X className="w-2 h-2 text-void" strokeWidth={3} />
-                      </span>
-                    )}
-                  </button>
-                  <button className={`w-3 h-3 rounded-full cursor-default ${isHovered ? 'bg-warning' : 'bg-border-strong'}`} aria-hidden="true" />
-                  <button
-                    onClick={() => data.onMaximize?.(id)}
-                    className={`w-3 h-3 rounded-full transition-colors group relative ${isHovered ? 'bg-success hover:bg-success/80 cursor-pointer' : 'bg-border-strong cursor-default'}`}
-                    aria-label="Maximize"
-                  >
-                    {isHovered && (
-                      <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Maximize2 className="w-2 h-2 text-void" strokeWidth={3} />
-                      </span>
-                    )}
-                  </button>
-                </div>
-              ) : (
-                <div className="ml-auto flex nodrag nopan">
-                  <button className="w-8 h-8 flex items-center justify-center opacity-40 cursor-default" aria-hidden="true">
-                    <div className="w-2.5 h-0.5 bg-text-tertiary" />
-                  </button>
-                  <button onClick={() => data.onMaximize?.(id)} className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${isHovered ? 'hover:bg-elevated cursor-pointer' : 'cursor-default'}`} aria-label="Maximize">
-                    <Maximize2 className="w-3.5 h-3.5 text-text-tertiary" />
-                  </button>
-                  <button onClick={() => data.onDelete?.(id)} className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${isHovered ? 'hover:bg-error-muted' : ''}`} aria-label="Delete">
-                    <X className="w-3.5 h-3.5 text-text-tertiary hover:text-error" />
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-        
-        {/* Content area - stop mouseup propagation to prevent ReactFlow from clearing selection */}
-        <div 
-          className={`p-5 space-y-4 scrollbar-thin scrollbar-auto-hide nodrag nopan select-text cursor-text relative flex-1 overflow-y-auto`}
-          onMouseUp={(e) => e.stopPropagation()}
-        >
-          {/* Question */}
-          <div className="nodrag nopan select-text cursor-text" ref={questionRef}>
-            {/* Selection context - shown if this node was created from a text selection */}
-            {data.selectionContext && (
-              <div className="text-sm text-text-tertiary italic mb-2">
-                &ldquo;{data.selectionContext}&rdquo;
-              </div>
-            )}
-            <div className="text-lg font-semibold text-user-question whitespace-pre-wrap break-words leading-snug">
-              {data.exploredSelections?.filter((s: ExploredSelection) => s.isFromQuestion).length > 0 ? (
-                <HighlightedText
-                  text={question}
-                  selections={data.exploredSelections.filter((s: ExploredSelection) => s.isFromQuestion)}
-                  onHighlightClick={handleHighlightClick}
-                />
-              ) : (
-                question
-              )}
-            </div>
-          </div>
-
-          <div className="border-t border-border-subtle" />
-
-          {/* Reasoning (thinking) */}
-          {reasoning && (
-            <div className="nodrag nopan mb-2 rounded-md border border-border-subtle bg-void/40">
-              <button
-                onClick={() => setShowReasoning(v => !v)}
-                className="w-full flex items-center justify-between px-3 py-2 text-xs text-text-tertiary hover:text-text-secondary"
-              >
-                <span>{showReasoning ? 'Hide' : 'Show'} thinking{data.isStreaming && !response ? '…' : ''}</span>
-                <span className="opacity-60">{showReasoning ? '▾' : '▸'}</span>
-              </button>
-              {showReasoning && (
-                <div className="px-3 pb-3 pt-1 text-[13px] text-text-secondary whitespace-pre-wrap select-text cursor-text leading-relaxed border-t border-border-subtle">
-                  {reasoning}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Response */}
-          <div className="nodrag nopan select-text cursor-text" ref={responseRef}>
-            {response ? (
-              <MarkdownContent 
-                content={response} 
-                className="text-[15px] text-ai-response leading-relaxed"
-                highlights={data.exploredSelections?.filter((s: ExploredSelection) => !s.isFromQuestion).map((s: ExploredSelection) => ({
-                  text: s.text,
-                  startOffset: s.startOffset,
-                  id: s.childNodeId,
-                  color: s.color,
-                }))}
-                onHighlightClick={handleResponseHighlightClick}
-              />
-            ) : data.isStreaming ? (
-              <div className="flex items-center gap-3 py-2">
-                <div className="flex items-center gap-1">
-                  <div className="w-2 h-2 bg-action-primary rounded-full" style={{ animation: 'thinking-bounce 1.4s ease-in-out infinite', animationDelay: '0ms' }} />
-                  <div className="w-2 h-2 bg-action-primary rounded-full" style={{ animation: 'thinking-bounce 1.4s ease-in-out infinite', animationDelay: '160ms' }} />
-                  <div className="w-2 h-2 bg-action-primary rounded-full" style={{ animation: 'thinking-bounce 1.4s ease-in-out infinite', animationDelay: '320ms' }} />
-                </div>
-                <span className="text-sm text-text-secondary" style={{ animation: 'thinking-fade 2s ease-in-out infinite' }}>Thinking</span>
-              </div>
-            ) : null}
-            
-            {data.isStreaming && response && (
-              <span className="inline-block w-0.5 h-4 bg-action-primary animate-pulse ml-0.5 align-middle" />
-            )}
-            
-            {!data.isStreaming && response && (
-              <div className="flex justify-end mt-2">
+        <AsciiBox
+          title={titleLabel}
+          topRight={
+            data.onDelete ? (
+              <span className="inline-flex items-center gap-[1ch] nodrag nopan">
                 <button
-                  onClick={handleCopyResponse}
-                  className={`p-1.5 rounded-md bg-void border border-border-subtle transition-all duration-200 ${isHovered ? 'opacity-100' : 'opacity-0 pointer-events-none'} hover:bg-elevated hover:border-border-default nodrag nopan`}
-                  aria-label={isCopied ? 'Copied!' : 'Copy response'}
+                  onClick={() => data.onMaximize?.(id)}
+                  className="text-text-tertiary hover:text-action-primary"
+                  aria-label="Maximize"
                 >
-                  {isCopied ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5 text-text-tertiary" />}
+                  □
                 </button>
-              </div>
-            )}
-          </div>
-
-        </div>
-
-        {/* Footer */}
-        <div className="border-t border-border-subtle bg-void select-none">
-          {/* Selected text preview - only rendered when active */}
-          {activeSelection && data.onBranchFromSelection && (
-            <div className="px-4 pt-2 pb-1">
-              <div className="flex items-center gap-2 text-xs">
-                <GitBranch className="w-3 h-3 text-action-primary flex-shrink-0" />
-                <span className="text-text-tertiary truncate flex-1 min-w-0" title={activeSelection?.text || ''}>
-                  &ldquo;{truncatedSelection || ''}&rdquo;
-                </span>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <button 
-                    onClick={async () => {
-                      if (activeSelection?.text) {
-                        await navigator.clipboard.writeText(activeSelection.text);
-                        setIsSelectionCopied(true);
-                        setTimeout(() => setIsSelectionCopied(false), 2000);
-                      }
-                    }}
-                    className="p-0.5 rounded hover:bg-elevated text-text-tertiary hover:text-text-secondary nodrag nopan"
-                    title={isSelectionCopied ? "Copied!" : "Copy selected text"}
-                  >
-                    {isSelectionCopied ? <Check className="w-3 h-3 text-success" /> : <Copy className="w-3 h-3" />}
-                  </button>
-                  <button 
-                    onClick={clearAllSelections}
-                    className="p-0.5 rounded hover:bg-elevated text-text-tertiary hover:text-text-secondary nodrag nopan"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
+                <button
+                  onClick={() => data.onDelete?.(id)}
+                  className="text-text-tertiary hover:text-error"
+                  aria-label="Delete node"
+                >
+                  x
+                </button>
+              </span>
+            ) : undefined
+          }
+          variant={data.isStreaming ? 'accent' : 'default'}
+          className="absolute inset-0 text-[13px]"
+          contentClassName="flex flex-col h-full p-0 pl-[2ch] pr-[2ch] pt-[1lh] pb-[1lh] gap-[0.75lh]"
+        >
+          {/* Scrollable content: question / reasoning / response */}
+          <div
+            className="nodrag nopan select-text cursor-text flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-auto-hide pr-[1ch]"
+            onMouseUp={(e) => e.stopPropagation()}
+          >
+            {/* Question */}
+            <div className="nodrag nopan select-text cursor-text" ref={questionRef}>
+              {data.selectionContext && (
+                <div className="text-text-tertiary italic mb-[0.5lh]">
+                  &gt; &ldquo;{data.selectionContext}&rdquo;
                 </div>
+              )}
+              <div className="text-text-primary whitespace-pre-wrap break-words">
+                <span className="text-action-primary">$&nbsp;</span>
+                {data.exploredSelections?.filter((s: ExploredSelection) => s.isFromQuestion).length > 0 ? (
+                  <HighlightedText
+                    text={question}
+                    selections={data.exploredSelections.filter((s: ExploredSelection) => s.isFromQuestion)}
+                    onHighlightClick={handleHighlightClick}
+                  />
+                ) : (
+                  question
+                )}
               </div>
             </div>
-          )}
-          
-          {/* Input row */}
-          <div className="p-4 select-none">
-            {/* Textarea wrapper - flex container for vertical centering */}
-            <div className="flex items-center gap-2 bg-surface border border-border-default rounded-md focus-within:border-border-focus transition-colors pl-3 pr-1.5 py-1.5">
-              {/* Textarea */}
-              <textarea
-                placeholder={activeSelection ? "Ask about this selection..." : "Ask a follow-up..."}
-                value={followUpText}
-                onChange={(e) => {
-                  setFollowUpText(e.target.value);
-                  e.target.style.height = 'auto';
-                  e.target.style.height = Math.min(e.target.scrollHeight, 96) + 'px';
-                }}
-                onMouseDown={(e) => e.stopPropagation()}
-                onPointerDown={(e) => e.stopPropagation()}
-                onKeyDown={async (e) => {
-                  if (e.key === 'Enter' && !e.shiftKey && followUpText.trim()) {
-                    e.preventDefault();
-                    if (activeSelection && data.onBranchFromSelection) {
-                      await handleBranchClick();
-                    } else {
-                      await handleSubmitFollowUp();
-                    }
+
+            {/* Reasoning (thinking) — collapsible, scrolls inside the node */}
+            {reasoning && (
+              <div className="nodrag nopan mt-[1lh]">
+                <button
+                  onClick={() => setShowReasoning(v => !v)}
+                  className="w-full flex items-center gap-2 text-text-tertiary hover:text-text-secondary"
+                >
+                  <span>{showReasoning ? '[-]' : '[+]'}</span>
+                  <span>thinking{data.isStreaming && !response ? '…' : ''}</span>
+                </button>
+                {showReasoning && (
+                  <div className="mt-[0.5lh] pl-[2ch] text-text-tertiary whitespace-pre-wrap select-text cursor-text border-l border-border-subtle">
+                    {reasoning}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Response */}
+            <div className="nodrag nopan select-text cursor-text mt-[1lh]" ref={responseRef}>
+              {response ? (
+                <MarkdownContent
+                  content={response}
+                  className="text-ai-response font-mono"
+                  highlights={data.exploredSelections?.filter((s: ExploredSelection) => !s.isFromQuestion).map((s: ExploredSelection) => ({
+                    text: s.text,
+                    startOffset: s.startOffset,
+                    id: s.childNodeId,
+                    color: s.color,
+                  }))}
+                  onHighlightClick={handleResponseHighlightClick}
+                />
+              ) : data.isStreaming ? (
+                <div className="text-action-primary">
+                  <span className="animate-pulse">█</span>
+                  <span className="ml-2 text-text-tertiary">awaiting tokens…</span>
+                </div>
+              ) : null}
+
+              {data.isStreaming && response && (
+                <span className="inline-block w-[1ch] text-action-primary animate-pulse align-baseline">█</span>
+              )}
+
+              {!data.isStreaming && response && (
+                <div className="flex justify-end mt-[0.5lh]">
+                  <button
+                    onClick={handleCopyResponse}
+                    className={`text-text-tertiary hover:text-text-secondary transition-opacity ${isHovered ? 'opacity-100' : 'opacity-0 pointer-events-none'} nodrag nopan`}
+                    aria-label={isCopied ? 'Copied!' : 'Copy response'}
+                  >
+                    {isCopied ? '[copied]' : '[copy]'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ASCII separator */}
+          <div aria-hidden className="text-border-subtle whitespace-nowrap overflow-hidden select-none -mx-[2ch]">
+            {'─'.repeat(400)}
+          </div>
+
+          {/* Selection preview */}
+          {activeSelection && data.onBranchFromSelection && (
+            <div className="flex items-center gap-2 text-text-tertiary -mt-[0.25lh]">
+              <span>&gt;</span>
+              <span className="truncate flex-1 min-w-0" title={activeSelection?.text || ''}>
+                &ldquo;{truncatedSelection || ''}&rdquo;
+              </span>
+              <button
+                onClick={async () => {
+                  if (activeSelection?.text) {
+                    await navigator.clipboard.writeText(activeSelection.text);
+                    setIsSelectionCopied(true);
+                    setTimeout(() => setIsSelectionCopied(false), 2000);
                   }
                 }}
-                disabled={isSubmitting}
-                rows={1}
-                className="flex-1 bg-transparent border-none text-text-primary placeholder:text-text-disabled focus:outline-none text-sm nodrag nopan resize-none overflow-y-auto"
-                style={{ height: '24px', lineHeight: '24px', maxHeight: '96px' }}
-              />
-              {/* Submit/Branch button */}
-              <Button
-                onClick={activeSelection && data.onBranchFromSelection ? handleBranchClick : handleSubmitFollowUp}
-                disabled={!followUpText.trim() || isSubmitting}
-                className={`shrink-0 h-6 p-0 rounded-md transition-colors select-none disabled:opacity-30 disabled:cursor-not-allowed ${
-                  activeSelection && data.onBranchFromSelection
-                    ? 'w-auto px-2 bg-action-primary/10 hover:bg-action-primary/20 text-action-primary border border-action-primary/30 disabled:bg-transparent'
-                    : 'w-6 bg-action-primary hover:bg-action-primary-hover text-action-primary-text disabled:bg-elevated'
-                }`}
-                title={activeSelection ? "Branch from selection (Enter)" : "Send (Enter)"}
+                className="hover:text-text-secondary nodrag nopan"
+                title={isSelectionCopied ? 'Copied!' : 'Copy selected text'}
               >
-                {isSubmitting ? (
-                  <div className="w-3 h-3 border-2 border-border-strong border-t-action-primary rounded-full animate-spin" />
-                ) : activeSelection && data.onBranchFromSelection ? (
-                  <div className="flex items-center gap-1">
-                    <GitBranch className="w-3 h-3" strokeWidth={2} />
-                    <span className="text-xs font-medium">Branch</span>
-                  </div>
-                ) : (
-                  <ArrowUp className="w-3 h-3" strokeWidth={2.5} />
-                )}
-              </Button>
+                {isSelectionCopied ? '[copied]' : '[copy]'}
+              </button>
+              <button onClick={clearAllSelections} className="hover:text-text-secondary nodrag nopan">
+                [x]
+              </button>
             </div>
-          </div>
-        </div>
+          )}
 
-        {/* Disambiguation menu - positioned over the card */}
+          {/* Input row */}
+          <div className="flex items-start gap-[1ch] select-none">
+            <span className="text-action-primary flex-shrink-0 mt-[2px]">&gt;</span>
+            <textarea
+              placeholder={activeSelection ? 'ask about this selection…' : 'ask a follow-up…'}
+              value={followUpText}
+              onChange={(e) => {
+                setFollowUpText(e.target.value);
+                e.target.style.height = 'auto';
+                e.target.style.height = Math.min(e.target.scrollHeight, 80) + 'px';
+              }}
+              onMouseDown={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+              onKeyDown={async (e) => {
+                if (e.key === 'Enter' && !e.shiftKey && followUpText.trim()) {
+                  e.preventDefault();
+                  if (activeSelection && data.onBranchFromSelection) {
+                    await handleBranchClick();
+                  } else {
+                    await handleSubmitFollowUp();
+                  }
+                }
+              }}
+              disabled={isSubmitting}
+              rows={1}
+              className="flex-1 bg-transparent border-none text-text-primary placeholder:text-text-disabled focus:outline-none nodrag nopan resize-none overflow-y-auto font-mono text-[13px]"
+              style={{ minHeight: '1lh', maxHeight: '80px', lineHeight: '1.2' }}
+            />
+            <button
+              onClick={activeSelection && data.onBranchFromSelection ? handleBranchClick : handleSubmitFollowUp}
+              disabled={!followUpText.trim() || isSubmitting}
+              className="flex-shrink-0 text-action-primary hover:text-action-primary-hover disabled:text-text-disabled disabled:cursor-not-allowed nodrag nopan"
+              title={activeSelection ? 'Branch from selection (Enter)' : 'Send (Enter)'}
+            >
+              {isSubmitting ? '[...]' : activeSelection && data.onBranchFromSelection ? '[branch]' : '[send]'}
+            </button>
+          </div>
+        </AsciiBox>
+
         {disambiguationState && (
           <DisambiguationMenu
             selections={disambiguationState.selections}
@@ -385,9 +346,9 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
             onDismiss={() => setDisambiguationState(null)}
           />
         )}
-      </Card>
-      
-      <Handle type="source" position={Position.Bottom} className="w-3 h-3 !bg-border-strong rounded-full" />
+      </div>
+
+      <Handle type="source" position={Position.Bottom} className="w-3 h-3 !bg-border-strong" />
     </>
   );
 }
