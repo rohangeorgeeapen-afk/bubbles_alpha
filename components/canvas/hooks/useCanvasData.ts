@@ -4,6 +4,10 @@ import { supabase } from '@/lib/supabase-client';
 
 export interface CanvasData {
   id: string;
+  // Real Supabase row id once persisted. Kept separate from `id` so the React
+  // key for the canvas surface stays stable across the temp → real swap and
+  // we don't unmount mid-stream.
+  dbId?: string;
   name: string;
   createdAt: string;
   nodes: Node[];
@@ -125,6 +129,7 @@ export function useCanvasData({ userId, onAuthError }: UseCanvasDataOptions) {
             
             formattedCanvases.push({
               id: canvas.id,
+              dbId: canvas.id,
               name: canvas.name,
               createdAt: canvas.created_at,
               nodes: fixedNodes,
@@ -223,16 +228,19 @@ export function useCanvasData({ userId, onAuthError }: UseCanvasDataOptions) {
       }
 
       if (data) {
-        const realCanvas: CanvasData = {
-          id: data.id,
-          name: data.name,
-          createdAt: data.created_at,
-          nodes: data.nodes || nodes,
-          edges: data.edges || edges,
-        };
-
-        setCanvases(prev => prev.map(canvas => canvas.id === tempId ? realCanvas : canvas));
-        setCurrentCanvasId(prev => prev === tempId ? realCanvas.id : prev);
+        // Keep the temp id as the canonical React identifier so the canvas
+        // surface doesn't remount mid-stream. Track the real Supabase id
+        // separately for subsequent DB writes.
+        setCanvases(prev => prev.map(canvas =>
+          canvas.id === tempId
+            ? {
+                ...canvas,
+                dbId: data.id,
+                name: data.name,
+                createdAt: data.created_at,
+              }
+            : canvas
+        ));
       }
     } catch (error) {
       console.error('Exception during canvas creation:', error);
@@ -284,13 +292,14 @@ export function useCanvasData({ userId, onAuthError }: UseCanvasDataOptions) {
     const oldCanvases = canvases;
     setCanvases(prev => prev.map(c => c.id === id ? { ...c, name: trimmedName } : c));
 
-    if (id.startsWith('temp-')) return;
+    const dbId = canvases.find(c => c.id === id)?.dbId;
+    if (!dbId) return;
 
     try {
       const { error } = await supabase
         .from('canvases')
         .update({ name: trimmedName })
-        .eq('id', id);
+        .eq('id', dbId);
 
       if (error) {
         setCanvases(oldCanvases);
@@ -316,10 +325,11 @@ export function useCanvasData({ userId, onAuthError }: UseCanvasDataOptions) {
       setCurrentCanvasId(newCanvases.length > 0 ? newCanvases[0].id : null);
     }
 
-    if (id.startsWith('temp-')) return;
+    const dbId = oldCanvases.find(c => c.id === id)?.dbId;
+    if (!dbId) return;
 
     try {
-      const { error } = await supabase.from('canvases').delete().eq('id', id);
+      const { error } = await supabase.from('canvases').delete().eq('id', dbId);
 
       if (error) {
         setCanvases(oldCanvases);
@@ -377,7 +387,8 @@ export function useCanvasData({ userId, onAuthError }: UseCanvasDataOptions) {
       )
     );
 
-    if (currentCanvasId.startsWith('temp-')) {
+    const dbId = currentCanvas?.dbId;
+    if (!dbId) {
       if (nodes.length > 0) {
         await persistTempCanvas(
           currentCanvasId,
@@ -398,7 +409,7 @@ export function useCanvasData({ userId, onAuthError }: UseCanvasDataOptions) {
           edges,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', currentCanvasId);
+        .eq('id', dbId);
 
       if (error) {
         console.error('Failed to save canvas:', error);

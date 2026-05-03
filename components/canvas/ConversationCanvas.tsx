@@ -548,10 +548,11 @@ function ConversationCanvasInner({
 
     // Now stream the response
     let fullResponse = '';
+    let fullReasoning = '';
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s for streaming
-      
+      const timeoutId = setTimeout(() => controller.abort(), 300000); // 5min — reasoning models can be slow
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -597,6 +598,10 @@ function ConversationCanvasInner({
             if (data === '[DONE]') continue;
             try {
               const parsed = JSON.parse(data);
+              if (parsed.reasoning) {
+                fullReasoning += parsed.reasoning;
+                updateNodeData(nodeId, { reasoning: fullReasoning });
+              }
               if (parsed.content) {
                 fullResponse += parsed.content;
                 updateNodeData(nodeId, { response: fullResponse });
@@ -615,7 +620,7 @@ function ConversationCanvasInner({
     }
 
     // Mark streaming complete
-    updateNodeData(nodeId, { response: fullResponse, isStreaming: false });
+    updateNodeData(nodeId, { response: fullResponse, reasoning: fullReasoning, isStreaming: false });
     setIsLoading(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getConversationHistory, setNodes, setEdges, handleSmartPanning, reactFlowInstance, updateNodeData]);
@@ -906,19 +911,20 @@ function ConversationCanvasInner({
     
     // Stream the response
     let fullResponse = '';
+    let fullReasoning = '';
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000);
-      
+      const timeoutId = setTimeout(() => controller.abort(), 300000); // 5min
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: conversationHistory, stream: true }),
         signal: controller.signal,
       });
-      
+
       clearTimeout(timeoutId);
-      
+
       if (!response.ok) {
         let errorMessage = `Request failed (${response.status})`;
         try {
@@ -930,27 +936,31 @@ function ConversationCanvasInner({
         } catch { /* ignore */ }
         throw new Error(errorMessage);
       }
-      
+
       const reader = response.body?.getReader();
       if (!reader) throw new Error('No response body');
-      
+
       const decoder = new TextDecoder();
       let buffer = '';
-      
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        
+
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
-        
+
         for (const line of lines) {
           if (line.startsWith('data: ')) {
             const data = line.slice(6);
             if (data === '[DONE]') continue;
             try {
               const parsed = JSON.parse(data);
+              if (parsed.reasoning) {
+                fullReasoning += parsed.reasoning;
+                updateNodeData(nodeId, { reasoning: fullReasoning });
+              }
               if (parsed.content) {
                 fullResponse += parsed.content;
                 updateNodeData(nodeId, { response: fullResponse });
@@ -967,8 +977,8 @@ function ConversationCanvasInner({
         fullResponse = `Sorry, an error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`;
       }
     }
-    
-    updateNodeData(nodeId, { response: fullResponse, isStreaming: false });
+
+    updateNodeData(nodeId, { response: fullResponse, reasoning: fullReasoning, isStreaming: false });
   }, [getConversationHistory, setNodes, setEdges, reactFlowInstance, updateNodeData]);
 
   // Refs for new callbacks
@@ -1174,7 +1184,7 @@ function ConversationCanvasInner({
       // Create abort controller for this request
       const controller = new AbortController();
       abortControllerRef.current = controller;
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 300000); // 5min — reasoning models can be slow
       
       const response = await fetch('/api/chat', {
         method: 'POST',

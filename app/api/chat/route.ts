@@ -112,29 +112,6 @@ async function getAuthenticatedUser(request: NextRequest) {
   return { userId: user.id, response: null };
 }
 
-const SYSTEM_PROMPT = `You are a passionate educator helping someone explore topics completely new to them. Make learning feel like a genuine conversation that respects their intelligence and curiosity.
-
-CRITICAL CONTEXT RULES:
-1. If the user asks about something YOU mentioned in your last response: Give a brief clarification (2-3 paragraphs), then reconnect to the original topic
-2. If the user asks a new question: Treat it as a fresh topic and explain it fully
-3. DO NOT reference previous context that doesn't exist
-
-When explaining new topics:
-- Include meaningful technical detail - don't oversimplify
-- Explain the "how" along with the "why"
-- Share engineering challenges, trade-offs, and constraints
-- Weave in history and human context naturally when relevant
-- Build progressively: start accessible, then add depth
-
-AVOID:
-- Oversimplified explanations
-- Labeled sections
-- Same structural patterns repeatedly
-- References to context that doesn't exist
-- Bullet points unless truly needed
-
-Be engaging AND substantive.`;
-
 // Convert messages to Gemini format
 function convertToGeminiFormat(messages: Message[]) {
   const contents: { role: string; parts: { text: string }[] }[] = [];
@@ -208,18 +185,126 @@ export async function POST(request: NextRequest) {
 
     const geminiApiKey = process.env.GEMINI_API_KEY;
     const perplexityApiKey = process.env.PERPLEXITY_API_KEY;
+    const nvidiaApiKey = process.env.NVIDIA_API_KEY;
 
-    if (!geminiApiKey && !perplexityApiKey) {
-      const mockResponse = `Mock response. Add GEMINI_API_KEY or PERPLEXITY_API_KEY to enable AI.`;
+    if (!geminiApiKey && !perplexityApiKey && !nvidiaApiKey) {
+      const mockResponse = `Mock response. Add GEMINI_API_KEY, PERPLEXITY_API_KEY, or NVIDIA_API_KEY to enable AI.`;
       if (stream) {
         return createTextStreamResponse(mockResponse);
       }
       return NextResponse.json({ response: mockResponse });
     }
 
-    // Add system prompt to messages
-    const messagesWithSystem = [{ role: 'system' as const, content: SYSTEM_PROMPT }, ...messages];
+    const messagesWithSystem = messages;
     const { contents, systemInstruction } = convertToGeminiFormat(messagesWithSystem);
+
+    // NVIDIA Integrate (dev testing) — OpenAI-compatible, takes priority when set.
+    if (nvidiaApiKey) {
+      const baseUrl = process.env.NVIDIA_API_BASE_URL || 'https://integrate.api.nvidia.com/v1';
+      const model = process.env.NVIDIA_MODEL || 'z-ai/glm4.7';
+
+      const nvidiaResponse = await fetch(`${baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${nvidiaApiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages: messagesWithSystem,
+          temperature: 1,
+          top_p: 1,
+          max_tokens: 16384,
+          stream: Boolean(stream),
+          chat_template_kwargs: { enable_thinking: true, clear_thinking: false },
+        }),
+      });
+
+      if (!nvidiaResponse.ok) {
+        const errorText = await nvidiaResponse.text().catch(() => '');
+        console.error('NVIDIA API error:', nvidiaResponse.status, errorText);
+        return NextResponse.json({ error: 'AI request failed.' }, { status: 500 });
+      }
+
+      if (stream) {
+        const encoder = new TextEncoder();
+        const readable = new ReadableStream({
+          async start(controller) {
+            const reader = nvidiaResponse.body?.getReader();
+            if (!reader) {
+              controller.close();
+              return;
+            }
+            const decoder = new TextDecoder();
+            let buffer = '';
+            let closed = false;
+            const safeEnqueue = (chunk: Uint8Array) => {
+              if (closed) return;
+              try {
+                controller.enqueue(chunk);
+              } catch {
+                closed = true;
+              }
+            };
+            try {
+              while (!closed) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+                for (const line of lines) {
+                  if (!line.startsWith('data: ')) continue;
+                  const data = line.slice(6);
+                  if (data === '[DONE]') {
+                    safeEnqueue(encoder.encode('data: [DONE]\n\n'));
+                    continue;
+                  }
+                  try {
+                    const parsed = JSON.parse(data);
+                    const delta = parsed.choices?.[0]?.delta;
+                    const reasoning = delta?.reasoning_content;
+                    if (reasoning) {
+                      safeEnqueue(encoder.encode(`data: ${JSON.stringify({ reasoning })}\n\n`));
+                    }
+                    const content = delta?.content;
+                    if (content) {
+                      safeEnqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
+                    }
+                  } catch {
+                    // skip malformed
+                  }
+                }
+              }
+            } catch (error) {
+              if (!closed) console.error('NVIDIA stream error:', error);
+            } finally {
+              if (!closed) {
+                closed = true;
+                try { controller.close(); } catch { /* already closed */ }
+              }
+              try { reader.releaseLock(); } catch { /* ignore */ }
+            }
+          },
+          cancel() {
+            // Client disconnected; reader cleanup happens in start()'s finally.
+          },
+        });
+        return new Response(readable, {
+          headers: {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+          },
+        });
+      }
+
+      const data = await nvidiaResponse.json();
+      const message = data.choices?.[0]?.message;
+      const responseText = message?.content || 'No response generated.';
+      const reasoningText = message?.reasoning_content || undefined;
+      return NextResponse.json({ response: responseText, reasoning: reasoningText });
+    }
 
     // Use native Gemini API (more reliable than OpenAI-compatible endpoint)
     if (geminiApiKey) {

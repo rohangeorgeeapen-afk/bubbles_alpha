@@ -35,11 +35,15 @@ export class SimplePositioner {
     if (node.children.length === 0) {
       // Leaf node
       node.x = x;
-      return this.config.nodeWidth;
+      return node.width || this.config.nodeWidth;
     }
-    
-    // Position all children first to calculate their widths
-    const childY = y + this.config.nodeHeight + this.config.verticalSpacing;
+
+    // Position all children first to calculate their widths.
+    // Use the parent's measured height (set by TreeBuilder) so tall nodes
+    // — e.g. expanded reasoning panels or long responses — push children
+    // far enough down to avoid overlap.
+    const parentHeight = node.height || this.config.nodeHeight;
+    const childY = y + parentHeight + this.config.verticalSpacing;
     let currentX = x;
     const childWidths: number[] = [];
     

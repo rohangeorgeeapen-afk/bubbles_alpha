@@ -14,6 +14,7 @@ import type { ExploredSelection } from './types';
 export interface ConversationNodeData extends Record<string, unknown> {
   question: string;
   response: string;
+  reasoning?: string;
   timestamp: string;
   isStreaming?: boolean;
   exploredSelections?: ExploredSelection[];
@@ -32,6 +33,8 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
   
   const question = data.question || '';
   const response = data.response || '';
+  const reasoning: string = data.reasoning || '';
+  const [showReasoning, setShowReasoning] = useState(false);
   const totalLength = question.length + response.length;
   const isLongContent = totalLength > 600;
   const [followUpText, setFollowUpText] = useState('');
@@ -141,7 +144,7 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onTouchStart={() => setIsHovered(true)}
-        className={`relative w-[450px] bg-surface border border-border-default rounded-lg shadow-depth-lg overflow-hidden flex flex-col nowheel select-none ${isLongContent ? 'h-[468px]' : ''}`}
+        className={`relative w-[450px] h-[468px] bg-surface border border-border-default rounded-lg shadow-depth-lg overflow-hidden flex flex-col nowheel select-none`}
         role="article"
         aria-label="Conversation node"
       >
@@ -194,7 +197,7 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
         
         {/* Content area - stop mouseup propagation to prevent ReactFlow from clearing selection */}
         <div 
-          className={`p-5 space-y-4 scrollbar-thin scrollbar-auto-hide nodrag nopan select-text cursor-text relative ${isLongContent ? 'flex-1 overflow-y-auto' : ''}`}
+          className={`p-5 space-y-4 scrollbar-thin scrollbar-auto-hide nodrag nopan select-text cursor-text relative flex-1 overflow-y-auto`}
           onMouseUp={(e) => e.stopPropagation()}
         >
           {/* Question */}
@@ -219,6 +222,24 @@ export default function ConversationNode({ id, data }: NodeProps<any>) {
           </div>
 
           <div className="border-t border-border-subtle" />
+
+          {/* Reasoning (thinking) */}
+          {reasoning && (
+            <div className="nodrag nopan mb-2 rounded-md border border-border-subtle bg-void/40">
+              <button
+                onClick={() => setShowReasoning(v => !v)}
+                className="w-full flex items-center justify-between px-3 py-2 text-xs text-text-tertiary hover:text-text-secondary"
+              >
+                <span>{showReasoning ? 'Hide' : 'Show'} thinking{data.isStreaming && !response ? '…' : ''}</span>
+                <span className="opacity-60">{showReasoning ? '▾' : '▸'}</span>
+              </button>
+              {showReasoning && (
+                <div className="px-3 pb-3 pt-1 text-[13px] text-text-secondary whitespace-pre-wrap select-text cursor-text leading-relaxed border-t border-border-subtle">
+                  {reasoning}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Response */}
           <div className="nodrag nopan select-text cursor-text" ref={responseRef}>

@@ -28,6 +28,13 @@ export class TreeBuilder {
     const nodeMap = new Map<string, TreeNode>();
     
     nodes.forEach(node => {
+      // Prefer the actual measured size from React Flow when available so
+      // collision/spacing reflects nodes that grew taller than the default
+      // (e.g. expanded reasoning panels, long responses).
+      const measured = (node as Node & { measured?: { width?: number; height?: number } }).measured;
+      const measuredW = measured?.width;
+      const measuredH = measured?.height;
+
       const treeNode: TreeNode = {
         id: node.id,
         children: [],
@@ -35,8 +42,8 @@ export class TreeBuilder {
         data: node,
         x: 0,
         y: 0,
-        width: 450,  // Fixed width for conversation nodes
-        height: 468, // Fixed height for conversation nodes
+        width: measuredW && measuredW > 0 ? measuredW : 450,
+        height: measuredH && measuredH > 0 ? Math.max(measuredH, 468) : 468,
         mod: 0,
         thread: null,
         ancestor: null as any, // Will be set to self during initialization
